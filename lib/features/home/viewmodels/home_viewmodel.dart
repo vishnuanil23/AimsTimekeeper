@@ -1,5 +1,6 @@
 // lib/features/home/viewmodels/home_viewmodel.dart
 
+import 'package:aims_timekeeper/utils/date_time_utils.dart';
 import 'package:get/get.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../utils/colors.dart';
@@ -41,15 +42,22 @@ class HomeState {
     String? statusText,
     String? buttonText,
   })  : currentTime = currentTime ?? _formatTime(DateTime.now()),
-        currentDate = currentDate ?? _formatDate(DateTime.now()),
+        currentDate = currentDate ?? DateTimeUtils.formatDate(DateTime.now()),
         statusText = statusText ?? 'Not punched in',
         buttonText = buttonText ?? 'Punch In';
 
   static String _formatTime(DateTime dt) =>
       '${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}';
 
-  static String _formatDate(DateTime dt) =>
-      '${dt.year}-${_two(dt.month)}-${_two(dt.day)}';
+  static String _formatDate(DateTime dt) {
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  final monthName = months[dt.month - 1];
+  return '${dt.day} $monthName ${dt.year}';
+}
+
 
   static String _two(int n) => n.toString().padLeft(2, '0');
 
@@ -86,17 +94,33 @@ class HomeViewModel extends GetxController {
   Future<void> _loadUserDetails() async {
     final user = await _storage.getUser();
 
-    final email = user?["email"] ?? "";
     final firstName = user?["firstName"] ?? "";
+    final lastName = user?["lastName"] ?? "";
+    final email = user?["email"] ?? "";
+    final bool punchedIn = user?["isLoggedIn"] ?? false;
 
-    homeState.update((s) {
-      if (s == null) return;
-      s.userEmail = email;
-      s.userName = firstName.isNotEmpty
-          ? firstName
-          : (email.contains("@") ? email.split('@').first : "User");
-    });
-  }
+      String fullName = "";
+
+      if (firstName.isNotEmpty && lastName.isNotEmpty) {
+        fullName = "$firstName $lastName";
+      } else if (firstName.isNotEmpty) {
+        fullName = firstName;
+      } else if (email.contains("@")) {
+        fullName = email.split('@').first;
+      } else {
+        fullName = "User";
+      }
+
+      homeState.update((s) {
+        if (s == null) return;
+        s.userEmail = email;
+        s.userName = fullName;
+        s.isPunchedIn = punchedIn;
+        s.statusText = punchedIn ? "Punched In" : "Not punched in";
+        s.buttonText = punchedIn ? "Punch Out" : "Punch In";
+      });
+
+        }
 
   /// Header name getter used in UI
   String get userName => homeState.value.userName;
@@ -112,8 +136,7 @@ class HomeViewModel extends GetxController {
         if (s == null) return;
         s.currentTime =
             '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
-        s.currentDate =
-            '${now.year}-${_two(now.month)}-${_two(now.day)}';
+       s.currentDate = DateTimeUtils.formatDate(now);
       });
 
       return true;
