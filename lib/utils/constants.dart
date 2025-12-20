@@ -1,10 +1,10 @@
 class AppConstants {
-  static const String baseUrl = "http://10.0.2.2:5078/";
+  static const String baseUrl = "http://10.0.2.2:5078";
 
   
   static const String loginEndpoint = '/auth/login';
-  static const String punchInEndpoint = '/attendance/punch-in';
-  static const String punchOutEndpoint = '/attendance/punch-out';
+  static const String punchInEndpoint = '/attendance/punch';
+  static const String punchOutEndpoint = '/attendance/punch';
   static const String attendanceStatusEndpoint = '/attendance/status';
   
   static const String tokenKey = 'auth_token';

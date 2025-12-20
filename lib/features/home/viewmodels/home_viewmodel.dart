@@ -1,5 +1,6 @@
 // lib/features/home/viewmodels/home_viewmodel.dart
 
+import 'package:aims_timekeeper/data/repositories/attendance_repository.dart';
 import 'package:aims_timekeeper/utils/date_time_utils.dart';
 import 'package:get/get.dart';
 import '../../../core/services/storage_service.dart';
@@ -20,6 +21,7 @@ class HomeState {
   bool isPunchedIn;
   DateTime? lastPunchInTime;
   DateTime? lastPunchOutTime;
+  int? attendanceId;
 
   bool isLoading;
 
@@ -31,6 +33,7 @@ class HomeState {
     this.userName = "",
     String? currentTime,
     String? currentDate,
+    int? attendanceId,
     this.hasLocation = false,
     this.currentLatitude,
     this.currentLongitude,
@@ -48,16 +51,6 @@ class HomeState {
 
   static String _formatTime(DateTime dt) =>
       '${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}';
-
-  static String _formatDate(DateTime dt) {
-  const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-  ];
-  final monthName = months[dt.month - 1];
-  return '${dt.day} $monthName ${dt.year}';
-}
-
 
   static String _two(int n) => n.toString().padLeft(2, '0');
 
@@ -80,6 +73,7 @@ class HomeState {
 }
 
 class HomeViewModel extends GetxController {
+  final AttendanceRepository _attendanceRepo = Get.put(AttendanceRepository());
   final StorageService _storage = Get.find<StorageService>();
   final Rx<HomeState> homeState = HomeState().obs;
 
@@ -160,53 +154,98 @@ class HomeViewModel extends GetxController {
     });
   }
 
-  /// Temporary local Punch In / Punch Out (Before API Integration)
-  Future<void> togglePunch() async {
-    if (homeState.value.isLoading || homeState.value.isFetchingLocation) return;
+  /// Punch In / Punch Out 
+ Future<void> togglePunch() async {
+  if (homeState.value.isLoading || homeState.value.isFetchingLocation) return;
 
-    homeState.update((s) {
-      if (s == null) return;
-      s.isLoading = true;
-      s.isFetchingLocation = true;
-    });
+  // Set loading states
+  homeState.update((s) {
+    if (s == null) return;
+    s.isLoading = true;
+    s.isFetchingLocation = true;
+  });
 
-    // Simulate location
-    await Future.delayed(const Duration(milliseconds: 600));
-    homeState.update((s) {
-      if (s == null) return;
-      s.currentLatitude = 25.2048;
-      s.currentLongitude = 55.2708;
-      s.hasLocation = true;
-      s.isFetchingLocation = false;
-    });
+  // Simulate location fetching
+  await Future.delayed(const Duration(milliseconds: 600));
 
-    await Future.delayed(const Duration(milliseconds: 300));
+  const lat = 25.2048;
+  const lng = 55.2708;
 
-    if (!homeState.value.isPunchedIn) {
-      // Punch IN
+  homeState.update((s) {
+    if (s == null) return;
+    s.currentLatitude = lat;
+    s.currentLongitude = lng;
+    s.hasLocation = true;
+    s.isFetchingLocation = false;
+  });
+
+  await Future.delayed(const Duration(milliseconds: 300));
+
+  //  If NOT punched in → Call PUNCH IN API
+  if (!homeState.value.isPunchedIn) {
+    try {
+      // Get saved user
+      final user = await _storage.getUser();
+      final int? userId = user?["id"];
+
+      if (userId == null) {
+        _showError("User ID missing");
+        homeState.update((s) => s?.isLoading = false);
+        return;
+      }
+
+      // Call API
+      final response = await _attendanceRepo.punchIn(
+        userId: userId,
+        latitude: lat,
+        longitude: lng,
+      );
+
+      if (!response.success) {
+        _showError(response.message ?? "Punch IN failed");
+        homeState.update((s) => s?.isLoading = false);
+        return;
+      }
+
+      // Parse API data
+      final data = response.data["data"];
+      final dt = DateTime.parse(data["lastPunchTime"]);
+
+      // Update state based on API response
       homeState.update((s) {
         if (s == null) return;
         s.isPunchedIn = true;
-        s.lastPunchInTime = DateTime.now();
+        s.lastPunchInTime = dt;
+        s.attendanceId = data["attendanceId"];
         s.lastPunchOutTime = null;
         s.statusText = "Punched In";
         s.buttonText = "Punch Out";
         s.isLoading = false;
       });
+
       _showSuccess("Punch In Done!");
-    } else {
-      // Punch OUT
-      homeState.update((s) {
-        if (s == null) return;
-        s.isPunchedIn = false;
-        s.lastPunchOutTime = DateTime.now();
-        s.statusText = "Punched Out";
-        s.buttonText = "Punch In";
-        s.isLoading = false;
-      });
-      _showSuccess("Punch Out Done!");
+
+    } catch (e) {
+      _showError("Error: $e");
+      homeState.update((s) => s?.isLoading = false);
     }
+
+    return;
   }
+
+  // 3️⃣ If already punched in → (Keep existing demo Punch OUT)
+  homeState.update((s) {
+    if (s == null) return;
+    s.isPunchedIn = false;
+    s.lastPunchOutTime = DateTime.now();
+    s.statusText = "Punched Out";
+    s.buttonText = "Punch In";
+    s.isLoading = false;
+  });
+
+  _showSuccess("Punch Out Done!");
+}
+
 
   /// Logout (demo)
   void logout() {

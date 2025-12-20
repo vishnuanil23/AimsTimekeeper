@@ -8,6 +8,7 @@ class AttendanceRepository {
 
   /// Punch in with latitude and longitude
   Future<ApiResponse> punchIn({
+    required int userId,
     required double latitude,
     required double longitude,
   }) async {
@@ -17,7 +18,8 @@ class AttendanceRepository {
     return await _apiHandler.post(
       AppConstants.punchInEndpoint,
       {
-        'timestamp': DateTime.now().toIso8601String(),
+         "userId": userId,
+        "action": "IN",
         'latitude': latitude,
         'longitude': longitude,
       },
