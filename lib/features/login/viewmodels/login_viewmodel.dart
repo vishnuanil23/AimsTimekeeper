@@ -52,21 +52,17 @@ class LoginViewModel extends GetxController {
   }
 
   /// Load remembered email if exists
-  Future<void> _loadRememberedEmail() async {
-    try {
-      final user = await _storageService.getUser();
-      if (user != null && user['email'] != null) {
-        emailController.text = user['email'];
-        loginState.value = loginState.value.copyWith(
-          email: user['email'],
-          rememberMe: true,
-        );
-        print('LoginViewModel: Loaded remembered email');
-      }
-    } catch (e) {
-      print('LoginViewModel: Error loading remembered email: $e');
-    }
+Future<void> _loadRememberedEmail() async {
+  final rememberedEmail = await _storageService.getRememberedEmail();
+
+  if (rememberedEmail != null && rememberedEmail.isNotEmpty) {
+    emailController.text = rememberedEmail;
+    loginState.value = loginState.value.copyWith(
+      email: rememberedEmail,
+      rememberMe: true,
+    );
   }
+}
 
   /// Toggle password visibility
   void togglePasswordVisibility() {
@@ -77,12 +73,19 @@ class LoginViewModel extends GetxController {
   }
 
   /// Toggle remember me
-  void toggleRememberMe(bool? value) {
-    loginState.value = loginState.value.copyWith(
-      rememberMe: value ?? false,
-    );
-    print('LoginViewModel: Remember me toggled: ${loginState.value.rememberMe}');
+  void toggleRememberMe(bool? value) async {
+  final newValue = value ?? false;
+
+  loginState.value = loginState.value.copyWith(rememberMe: newValue);
+
+  if (newValue) {
+    // Save email immediately when user checks remember me
+    await _storageService.saveRememberedEmail(emailController.text.trim());
+  } else {
+    // Clear if user unchecks remembering 
+    await _storageService.clearRememberedEmail();
   }
+}
 
 /// Main login method (REAL API)
 Future<void> login() async {
@@ -130,7 +133,11 @@ Future<void> login() async {
 
     // Save dummy token to satisfy your ApiHandler header flow
     await _storageService.saveToken("temp_token_${DateTime.now().millisecondsSinceEpoch}");
-
+    if (loginState.value.rememberMe) {
+      await _storageService.saveRememberedEmail(emailController.text.trim());
+    } else {
+      await _storageService.clearRememberedEmail();
+    }
     loginState.value = loginState.value.copyWith(
       successMessage: AppStrings.loginSuccess,
     );
@@ -236,28 +243,6 @@ Future<void> login() async {
     );
 
     _showSnackbar('Error', message, AppColors.error);
-  }
-
-  /// Navigate to forgot password screen
-  void navigateToForgotPassword() {
-    print('LoginViewModel: Navigate to forgot password');
-    // TODO: Implement forgot password navigation
-    _showSnackbar(
-      'Info',
-      'Forgot password feature coming soon',
-      AppColors.info,
-    );
-  }
-
-  /// Navigate to sign up screen
-  void navigateToSignUp() {
-    print('LoginViewModel: Navigate to sign up');
-    // TODO: Implement sign up navigation
-    _showSnackbar(
-      'Info',
-      'Sign up feature coming soon',
-      AppColors.info,
-    );
   }
 
   /// Show snackbar message

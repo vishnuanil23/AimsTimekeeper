@@ -1,5 +1,6 @@
 class AppConstants {
-  static const String baseUrl = "http://10.0.2.2:5078";
+  // static const String baseUrl = "http://10.0.2.2:5078";
+static const String baseUrl = "http://111.118.176.204:8067";
 
   
   static const String loginEndpoint = '/auth/login';

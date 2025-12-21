@@ -269,25 +269,32 @@ class HomeViewModel extends GetxController {
 
   /// Logout 
  Future<void> logout() async {
-  // Clear all saved data from storage
+  // Load remembered email
+  final rememberedEmail = await _storage.getRememberedEmail();
+
+  // Clear everything except remembered email
   await _storage.clearAll();
 
-  // Reset home state
+  // Restore remembered email if exists
+  if (rememberedEmail != null) {
+    await _storage.saveRememberedEmail(rememberedEmail);
+  }
+
+  // Reset UI state
   homeState.update((s) {
     if (s == null) return;
     s.isPunchedIn = false;
     s.lastPunchInTime = null;
     s.lastPunchOutTime = null;
     s.attendanceId = null;
-    s.userEmail = "";
+    s.userEmail = rememberedEmail ?? "";
+    s.statusText = "Not Punched In";
+    s.buttonText = "Punch In";
     s.hasLocation = false;
     s.currentLatitude = null;
     s.currentLongitude = null;
-    s.statusText = "Not Punched In";
-    s.buttonText = "Punch In";
   });
 
-  // Navigate to login
   Get.offAllNamed('/login');
 }
 

@@ -245,17 +245,6 @@ class LoginView extends GetView<LoginViewModel> {
                 ),
               ],
             )),
-        TextButton(
-          onPressed: controller.navigateToForgotPassword,
-          child: const Text(
-            AppStrings.forgotPassword,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
       ],
     );
   }

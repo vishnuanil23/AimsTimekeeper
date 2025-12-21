@@ -37,6 +37,18 @@ class StorageService {
     return _prefs.getBool(AppConstants.isPunchedInKey) ?? false;
   }
 
+    Future<void> saveRememberedEmail(String email) async {
+    await _prefs.setString("remembered_email", email);
+  }
+
+  Future<String?> getRememberedEmail() async {
+    return _prefs.getString("remembered_email");
+  }
+
+  Future<void> clearRememberedEmail() async {
+    await _prefs.remove("remembered_email");
+  }
+
   Future<void> clear() async {
     await _prefs.clear();
   }
