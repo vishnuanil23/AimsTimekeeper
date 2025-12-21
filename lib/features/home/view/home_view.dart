@@ -135,30 +135,7 @@ class HomeView extends GetView<HomeViewModel> {
             ],
           ),
           // Location indicator
-          Obx(() {
-            final state = controller.homeState.value;
-            if (state.hasLocation) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, color: AppColors.white, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Location: ${state.currentLatitude!.toStringAsFixed(4)}, ${state.currentLongitude!.toStringAsFixed(4)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          }),
+          
         ],
       ),
     );

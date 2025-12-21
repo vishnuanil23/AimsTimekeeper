@@ -1,5 +1,6 @@
 // lib/features/home/viewmodels/home_viewmodel.dart
 
+import 'package:aims_timekeeper/core/services/location_service.dart';
 import 'package:aims_timekeeper/data/repositories/attendance_repository.dart';
 import 'package:aims_timekeeper/utils/date_time_utils.dart';
 import 'package:get/get.dart';
@@ -16,6 +17,7 @@ class HomeState {
   bool hasLocation;
   double? currentLatitude;
   double? currentLongitude;
+  String? locationText;
   bool isFetchingLocation;
 
   bool isPunchedIn;
@@ -37,6 +39,7 @@ class HomeState {
     this.hasLocation = false,
     this.currentLatitude,
     this.currentLongitude,
+    this.locationText,
     this.isFetchingLocation = false,
     this.isPunchedIn = false,
     this.lastPunchInTime,
@@ -161,13 +164,24 @@ class HomeViewModel extends GetxController {
   // Simulate location fetching
   await Future.delayed(const Duration(milliseconds: 600));
 
-  const lat = 25.2048;
-  const lng = 55.2708;
+ // Fetch real location
+    final position = await LocationService.getCurrentLocation();
+
+    if (position == null) {
+      _showError("Location permission denied");
+      homeState.update((s) => s?.isFetchingLocation = false);
+      return;
+    }
+
+    final lat = position.latitude;
+    final lng = position.longitude;
+    final address = await LocationService.getAddressFromCoordinates(lat, lng);
 
   homeState.update((s) {
     if (s == null) return;
     s.currentLatitude = lat;
     s.currentLongitude = lng;
+    s.locationText = address ?? "Location Available";
     s.hasLocation = true;
     s.isFetchingLocation = false;
   });
