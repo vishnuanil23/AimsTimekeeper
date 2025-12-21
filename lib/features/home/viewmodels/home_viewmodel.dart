@@ -86,34 +86,28 @@ class HomeViewModel extends GetxController {
 
   /// Load stored user email + firstName
   Future<void> _loadUserDetails() async {
-    final user = await _storage.getUser();
+     final user = await _storage.getUser();
 
-    final firstName = user?["firstName"] ?? "";
-    final lastName = user?["lastName"] ?? "";
-    final email = user?["email"] ?? "";
-    final bool punchedIn = user?["isLoggedIn"] ?? false;
+  if (user == null) return;
 
-      String fullName = "";
+  homeState.update((s) {
+    if (s == null) return;
 
-      if (firstName.isNotEmpty && lastName.isNotEmpty) {
-        fullName = "$firstName $lastName";
-      } else if (firstName.isNotEmpty) {
-        fullName = firstName;
-      } else if (email.contains("@")) {
-        fullName = email.split('@').first;
-      } else {
-        fullName = "User";
-      }
+    s.userEmail = user["email"] ?? "";
+    s.userName = "${user["firstName"]} ${user["lastName"]}".trim();
+    
+    // IMPORTANT:
+    s.attendanceId = user["attendanceId"];
+    s.isPunchedIn = user["isLoggedIn"] ?? false;
 
-      homeState.update((s) {
-        if (s == null) return;
-        s.userEmail = email;
-        s.userName = fullName;
-        s.isPunchedIn = punchedIn;
-        s.statusText = punchedIn ? "Punched In" : "Not punched in";
-        s.buttonText = punchedIn ? "Punch Out" : "Punch In";
-      });
-
+    if (s.isPunchedIn) {
+      s.statusText = "Punched In";
+      s.buttonText = "Punch Out";
+    } else {
+      s.statusText = "Not Punched In";
+      s.buttonText = "Punch In";
+    }
+  });
         }
 
   /// Header name getter used in UI
@@ -158,7 +152,6 @@ class HomeViewModel extends GetxController {
  Future<void> togglePunch() async {
   if (homeState.value.isLoading || homeState.value.isFetchingLocation) return;
 
-  // Set loading states
   homeState.update((s) {
     if (s == null) return;
     s.isLoading = true;
@@ -179,22 +172,19 @@ class HomeViewModel extends GetxController {
     s.isFetchingLocation = false;
   });
 
-  await Future.delayed(const Duration(milliseconds: 300));
+  // Get user
+  final user = await _storage.getUser();
+  final int? userId = user?["id"];
 
-  //  If NOT punched in → Call PUNCH IN API
+  if (userId == null) {
+    _showError("User ID missing");
+    homeState.update((s) => s?.isLoading = false);
+    return;
+  }
+
+  // PUNCH IN
   if (!homeState.value.isPunchedIn) {
     try {
-      // Get saved user
-      final user = await _storage.getUser();
-      final int? userId = user?["id"];
-
-      if (userId == null) {
-        _showError("User ID missing");
-        homeState.update((s) => s?.isLoading = false);
-        return;
-      }
-
-      // Call API
       final response = await _attendanceRepo.punchIn(
         userId: userId,
         latitude: lat,
@@ -207,23 +197,23 @@ class HomeViewModel extends GetxController {
         return;
       }
 
-      // Parse API data
       final data = response.data["data"];
       final dt = DateTime.parse(data["lastPunchTime"]);
 
-      // Update state based on API response
       homeState.update((s) {
         if (s == null) return;
         s.isPunchedIn = true;
         s.lastPunchInTime = dt;
-        s.attendanceId = data["attendanceId"];
         s.lastPunchOutTime = null;
+        s.attendanceId = data["attendanceId"];   
+        print("Saved AttendanceID: ${data["attendanceId"]}");
+
         s.statusText = "Punched In";
         s.buttonText = "Punch Out";
         s.isLoading = false;
       });
 
-      _showSuccess("Punch In Done!");
+      _showSuccess("Punch IN recorded");
 
     } catch (e) {
       _showError("Error: $e");
@@ -233,24 +223,73 @@ class HomeViewModel extends GetxController {
     return;
   }
 
-  // 3️⃣ If already punched in → (Keep existing demo Punch OUT)
-  homeState.update((s) {
-    if (s == null) return;
-    s.isPunchedIn = false;
-    s.lastPunchOutTime = DateTime.now();
-    s.statusText = "Punched Out";
-    s.buttonText = "Punch In";
-    s.isLoading = false;
-  });
+  // 3️⃣ PUNCH OUT
+  try {
+    final attendanceId = homeState.value.attendanceId;
 
-  _showSuccess("Punch Out Done!");
+    if (attendanceId == null) {
+      _showError("Cannot Punch Out — attendanceId missing");
+      homeState.update((s) => s?.isLoading = false);
+      return;
+    }
+
+    final response = await _attendanceRepo.punchOut(
+      userId: userId,
+      attendanceId: attendanceId,
+      latitude: lat,
+      longitude: lng,
+    );
+
+    if (!response.success) {
+      _showError(response.message ?? "Punch OUT failed");
+      homeState.update((s) => s?.isLoading = false);
+      return;
+    }
+
+    final data = response.data["data"];
+    final dt = DateTime.parse(data["lastPunchOutTime"]);
+
+    homeState.update((s) {
+      if (s == null) return;
+      s.isPunchedIn = false;
+      s.lastPunchOutTime = dt;
+      s.statusText = "Punched Out";
+      s.buttonText = "Punch In";
+      s.isLoading = false;
+    });
+
+    _showSuccess("Punch OUT recorded");
+
+  } catch (e) {
+    _showError("Error: $e");
+    homeState.update((s) => s?.isLoading = false);
+  }
 }
 
 
-  /// Logout (demo)
-  void logout() {
-    Get.offAllNamed('/login');
-  }
+  /// Logout 
+ Future<void> logout() async {
+  // Clear all saved data from storage
+  await _storage.clearAll();
+
+  // Reset home state
+  homeState.update((s) {
+    if (s == null) return;
+    s.isPunchedIn = false;
+    s.lastPunchInTime = null;
+    s.lastPunchOutTime = null;
+    s.attendanceId = null;
+    s.userEmail = "";
+    s.hasLocation = false;
+    s.currentLatitude = null;
+    s.currentLongitude = null;
+    s.statusText = "Not Punched In";
+    s.buttonText = "Punch In";
+  });
+
+  // Navigate to login
+  Get.offAllNamed('/login');
+}
 
   void _showError(String msg) {
     Get.snackbar(

@@ -40,6 +40,10 @@ class StorageService {
   Future<void> clear() async {
     await _prefs.clear();
   }
+  
+  Future<void> clearAll() async {
+    await _prefs.clear();
+  }
 
   Future<bool> isLoggedIn() async {
     final token = await getToken();

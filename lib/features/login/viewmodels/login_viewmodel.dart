@@ -124,9 +124,9 @@ Future<void> login() async {
       _handleLoginError("Invalid server response");
       return;
     }
-
-    // Save user to local storage
-    await _storageService.saveUser(userData);
+    final hrmsUser = _authRepository.parseUser(userData);
+    // Save user as JSON map
+    await _storageService.saveUser(hrmsUser.toJson());
 
     // Save dummy token to satisfy your ApiHandler header flow
     await _storageService.saveToken("temp_token_${DateTime.now().millisecondsSinceEpoch}");
@@ -189,16 +189,19 @@ Future<void> login() async {
     try {
       // Parse user model from response
       final user = _authRepository.parseUser(data['user']);
+      
+
 
       // Save token to local storage
       await _storageService.saveToken(data['token']);
+      
       print('LoginViewModel: Token saved');
 
         await _storageService.clear();
         await _storageService.clear();
 
       // Save user data to local storage
-      await _storageService.saveUser(user);
+      await _storageService.saveUser(user.toJson());
       print('LoginViewModel: User data saved');
 
       // Update state with success message

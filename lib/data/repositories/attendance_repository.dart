@@ -27,22 +27,23 @@ class AttendanceRepository {
   }
 
   /// Punch out with latitude and longitude
-  Future<ApiResponse> punchOut({
-    required double latitude,
-    required double longitude,
-  }) async {
-    print('AttendanceRepository: Punch out request with location');
-    print('AttendanceRepository: Lat: $latitude, Long: $longitude');
-    
-    return await _apiHandler.post(
-      AppConstants.punchOutEndpoint,
-      {
-        'timestamp': DateTime.now().toIso8601String(),
-        'latitude': latitude,
-        'longitude': longitude,
-      },
-    );
-  }
+Future<ApiResponse> punchOut({
+  required int userId,
+  required int attendanceId,
+  required double latitude,
+  required double longitude,
+}) async {
+  return await _apiHandler.post(
+     AppConstants.punchOutEndpoint,   
+    {
+      "userId": userId,
+      "attendanceId": attendanceId,
+      "latitude": latitude,
+      "longitude": longitude,
+      "action": "OUT"
+    },
+  );
+}
 
   /// Get attendance status
   Future<ApiResponse> getAttendanceStatus() async {
