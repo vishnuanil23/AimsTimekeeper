@@ -36,44 +36,39 @@ class ApiHandler {
     }
   }
 
-Future<ApiResponse> post(String endpoint, Map<String, dynamic> data) async {
-  final url = '${AppConstants.baseUrl}$endpoint';
-  final headers = await _getHeaders();
+  Future<ApiResponse> post(String endpoint, Map<String, dynamic> data) async {
+    final url = '${AppConstants.baseUrl}$endpoint';
+    final headers = await _getHeaders();
 
-  try {
-    print("\n===================== API REQUEST =====================");
-    print("POST: $url");
-    print("HEADERS: $headers");
-    print("BODY: $data");
-    print("=======================================================\n");
+    try {
+      print("\n===================== API REQUEST =====================");
+      print("POST: $url");
+      print("HEADERS: $headers");
+      print("BODY: $data");
+      print("=======================================================\n");
 
-    final response = await http
-        .post(
-          Uri.parse(url),
-          headers: headers,
-          body: jsonEncode(data),
-        )
-        .timeout(const Duration(seconds: AppConstants.connectionTimeout));
+      final response = await http
+          .post(Uri.parse(url), headers: headers, body: jsonEncode(data))
+          .timeout(const Duration(seconds: AppConstants.connectionTimeout));
 
-    print("\n==================== API RESPONSE =====================");
-    print("STATUS CODE: ${response.statusCode}");
-    print("BODY: ${response.body}");
-    print("=======================================================\n");
+      print("\n==================== API RESPONSE =====================");
+      print("STATUS CODE: ${response.statusCode}");
+      print("BODY: ${response.body}");
+      print("=======================================================\n");
 
-    return _handleResponse(response);
-  } catch (e) {
-    print("\n==================== API ERROR ========================");
-    print("ERROR: $e");
-    print("=======================================================\n");
+      return _handleResponse(response);
+    } catch (e) {
+      print("\n==================== API ERROR ========================");
+      print("ERROR: $e");
+      print("=======================================================\n");
 
-    return ApiResponse(
-      success: false,
-      message: AppStrings.somethingWentWrong,
-      error: e.toString(),
-    );
+      return ApiResponse(
+        success: false,
+        message: AppStrings.somethingWentWrong,
+        error: e.toString(),
+      );
+    }
   }
-}
-
 
   ApiResponse _handleResponse(http.Response response) {
     final dynamic data = jsonDecode(response.body);

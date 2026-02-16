@@ -88,54 +88,90 @@ class HomeView extends GetView<HomeViewModel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Obx(() => Text(
-                '${AppStrings.welcomeBack}, ${controller.userName}!',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.white,
-                  letterSpacing: 0.5,
-                ),
-              )),
+          Obx(
+            () => Text(
+              '${AppStrings.welcomeBack}, ${controller.userName}!',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
           const SizedBox(height: 4),
-          Obx(() => Text(
-                controller.homeState.value.userEmail,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.white.withOpacity(0.9),
-                ),
-              )),
+          Obx(
+            () => Text(
+              controller.homeState.value.userEmail,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.white.withOpacity(0.9),
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
               const Icon(Icons.access_time, color: AppColors.white, size: 20),
               const SizedBox(width: 8),
-              Obx(() => Text(
-                    controller.homeState.value.currentTime,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.white,
-                    ),
-                  )),
+              Obx(
+                () => Text(
+                  controller.homeState.value.currentTime,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.calendar_today, color: AppColors.white, size: 20),
+              const Icon(
+                Icons.calendar_today,
+                color: AppColors.white,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              Obx(() => Text(
-                    controller.homeState.value.currentDate,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.white,
-                    ),
-                  )),
+              Obx(
+                () => Text(
+                  controller.homeState.value.currentDate,
+                  style: const TextStyle(fontSize: 14, color: AppColors.white),
+                ),
+              ),
             ],
           ),
           // Location indicator
-          
+          Obx(() {
+            final location = controller.homeState.value.locationText;
+            if (location == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    color: AppColors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      location,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -241,56 +277,65 @@ class HomeView extends GetView<HomeViewModel> {
             onTap: isProcessing ? null : controller.togglePunch,
             borderRadius: BorderRadius.circular(20),
             child: Center(
-              child: isProcessing
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
-                          strokeWidth: 3,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          state.isFetchingLocation ? 'Getting location...' : 'Processing...',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(icon, size: 60, color: AppColors.white),
-                        const SizedBox(height: 16),
-                        Text(
-                          state.buttonText,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.location_on, color: AppColors.white, size: 16),
-                            SizedBox(width: 4),
-                            Text(
-                              'Location will be recorded',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
+              child:
+                  isProcessing
+                      ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.white,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                            strokeWidth: 3,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            state.isFetchingLocation
+                                ? 'Getting location...'
+                                : 'Processing...',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      )
+                      : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(icon, size: 60, color: AppColors.white),
+                          const SizedBox(height: 16),
+                          Text(
+                            state.buttonText,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: AppColors.white,
+                                size: 16,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Location will be recorded',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
             ),
           ),
         ),
@@ -301,7 +346,7 @@ class HomeView extends GetView<HomeViewModel> {
   Widget _buildStatsRow() {
     return Obx(() {
       final state = controller.homeState.value;
-      
+
       return Row(
         children: [
           Expanded(

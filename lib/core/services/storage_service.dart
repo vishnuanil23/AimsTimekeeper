@@ -37,7 +37,7 @@ class StorageService {
     return _prefs.getBool(AppConstants.isPunchedInKey) ?? false;
   }
 
-    Future<void> saveRememberedEmail(String email) async {
+  Future<void> saveRememberedEmail(String email) async {
     await _prefs.setString("remembered_email", email);
   }
 
@@ -49,10 +49,22 @@ class StorageService {
     await _prefs.remove("remembered_email");
   }
 
+  Future<void> saveCachedLocation(String location) async {
+    await _prefs.setString("cached_location", location);
+  }
+
+  String? getCachedLocation() {
+    return _prefs.getString("cached_location");
+  }
+
+  Future<void> clearCachedLocation() async {
+    await _prefs.remove("cached_location");
+  }
+
   Future<void> clear() async {
     await _prefs.clear();
   }
-  
+
   Future<void> clearAll() async {
     await _prefs.clear();
   }

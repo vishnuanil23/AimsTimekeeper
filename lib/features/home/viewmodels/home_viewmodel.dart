@@ -1,82 +1,108 @@
-// lib/features/home/viewmodels/home_viewmodel.dart
-
-import 'package:aims_timekeeper/core/services/location_service.dart';
+import 'package:aims_timekeeper/core/services/storage_service.dart';
 import 'package:aims_timekeeper/data/repositories/attendance_repository.dart';
-import 'package:aims_timekeeper/utils/date_time_utils.dart';
+import 'package:aims_timekeeper/data/repositories/location_repository.dart';
+import 'package:aims_timekeeper/utils/colors.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import '../../../core/services/storage_service.dart';
-import '../../../utils/colors.dart';
 
 class HomeState {
   String userEmail;
   String userName;
-
   String currentTime;
   String currentDate;
-
-  bool hasLocation;
-  double? currentLatitude;
-  double? currentLongitude;
-  String? locationText;
-  bool isFetchingLocation;
-
   bool isPunchedIn;
+  bool isLoading;
+  bool isFetchingLocation;
   DateTime? lastPunchInTime;
   DateTime? lastPunchOutTime;
   int? attendanceId;
-
-  bool isLoading;
-
-  String statusText;
-  String buttonText;
+  String? locationText;
 
   HomeState({
     this.userEmail = "",
-    this.userName = "",
+    this.userName = "User",
     String? currentTime,
     String? currentDate,
-    int? attendanceId,
-    this.hasLocation = false,
-    this.currentLatitude,
-    this.currentLongitude,
-    this.locationText,
-    this.isFetchingLocation = false,
     this.isPunchedIn = false,
+    this.isLoading = false,
+    this.isFetchingLocation = false,
     this.lastPunchInTime,
     this.lastPunchOutTime,
-    this.isLoading = false,
-    String? statusText,
-    String? buttonText,
-  })  : currentTime = currentTime ?? _formatTime(DateTime.now()),
-        currentDate = currentDate ?? DateTimeUtils.formatDate(DateTime.now()),
-        statusText = statusText ?? 'Not punched in',
-        buttonText = buttonText ?? 'Punch In';
+    this.attendanceId,
+    this.locationText,
+  }) : currentTime = currentTime ?? _formatTime(DateTime.now()),
+       currentDate = currentDate ?? _formatDate(DateTime.now());
 
   static String _formatTime(DateTime dt) =>
-      '${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}';
+      "${dt.hour.toString().padLeft(2, '0')}:"
+      "${dt.minute.toString().padLeft(2, '0')}:"
+      "${dt.second.toString().padLeft(2, '0')}";
 
-  static String _two(int n) => n.toString().padLeft(2, '0');
+  static String _formatDate(DateTime dt) {
+    final day = dt.day;
+    String suffix = 'th';
+    if (day >= 11 && day <= 13) {
+      suffix = 'th';
+    } else {
+      switch (day % 10) {
+        case 1:
+          suffix = 'st';
+          break;
+        case 2:
+          suffix = 'nd';
+          break;
+        case 3:
+          suffix = 'rd';
+          break;
+        default:
+          suffix = 'th';
+      }
+    }
+
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final month = months[dt.month - 1];
+
+    return "$day$suffix $month ${dt.year}";
+  }
+
+  // Computed properties for UI
+  String get statusText => isPunchedIn ? "Punched In" : "Not Punched In";
+  String get buttonText => isPunchedIn ? "Punch Out" : "Punch In";
 
   String get lastActionTime {
     final dt = lastPunchOutTime ?? lastPunchInTime;
     if (dt == null) return '-';
-    return '${dt.year}-${_two(dt.month)}-${_two(dt.day)} '
-        '${_two(dt.hour)}:${_two(dt.minute)}';
+    return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} "
+        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
   String get formattedWorkDuration {
     if (lastPunchInTime == null) return '00:00:00';
     final end = lastPunchOutTime ?? DateTime.now();
     final diff = end.difference(lastPunchInTime!);
-
-    return '${_two(diff.inHours)}:'
-        '${_two(diff.inMinutes.remainder(60))}:'
-        '${_two(diff.inSeconds.remainder(60))}';
+    final h = diff.inHours.toString().padLeft(2, '0');
+    final m = diff.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = diff.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
   }
 }
 
 class HomeViewModel extends GetxController {
   final AttendanceRepository _attendanceRepo = Get.put(AttendanceRepository());
+  final LocationRepository _locationRepo = Get.put(LocationRepository());
   final StorageService _storage = Get.find<StorageService>();
   final Rx<HomeState> homeState = HomeState().obs;
 
@@ -89,29 +115,24 @@ class HomeViewModel extends GetxController {
 
   /// Load stored user email + firstName
   Future<void> _loadUserDetails() async {
-     final user = await _storage.getUser();
+    final user = await _storage.getUser();
 
-  if (user == null) return;
+    if (user == null) return;
 
-  homeState.update((s) {
-    if (s == null) return;
+    homeState.update((s) {
+      if (s == null) return;
 
-    s.userEmail = user["email"] ?? "";
-    s.userName = "${user["firstName"]} ${user["lastName"]}".trim();
-    
-    // IMPORTANT:
-    s.attendanceId = user["attendanceId"];
-    s.isPunchedIn = user["isLoggedIn"] ?? false;
+      s.userEmail = user["email"] ?? "";
+      s.userName = "${user["firstName"]} ${user["lastName"]}".trim();
+      if (s.userName.isEmpty) s.userName = "User";
 
-    if (s.isPunchedIn) {
-      s.statusText = "Punched In";
-      s.buttonText = "Punch Out";
-    } else {
-      s.statusText = "Not Punched In";
-      s.buttonText = "Punch In";
-    }
-  });
-        }
+      s.attendanceId = user["attendanceId"];
+      s.isPunchedIn = user["isLoggedIn"] ?? false;
+
+      // Load cached location if exists
+      s.locationText = _storage.getCachedLocation();
+    });
+  }
 
   /// Header name getter used in UI
   String get userName => homeState.value.userName;
@@ -125,16 +146,13 @@ class HomeViewModel extends GetxController {
 
       homeState.update((s) {
         if (s == null) return;
-        s.currentTime =
-            '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
-       s.currentDate = DateTimeUtils.formatDate(now);
+        s.currentTime = HomeState._formatTime(now);
+        s.currentDate = HomeState._formatDate(now);
       });
 
       return true;
     });
   }
-
-  static String _two(int n) => n.toString().padLeft(2, '0');
 
   /// Pull-to-refresh action
   Future<void> refreshData() async {
@@ -151,166 +169,156 @@ class HomeViewModel extends GetxController {
     });
   }
 
-  /// Punch In / Punch Out 
- Future<void> togglePunch() async {
-  if (homeState.value.isLoading || homeState.value.isFetchingLocation) return;
+  /// Punch In / Punch Out
+  Future<void> togglePunch() async {
+    if (homeState.value.isLoading || homeState.value.isFetchingLocation) return;
 
-  homeState.update((s) {
-    if (s == null) return;
-    s.isLoading = true;
-    s.isFetchingLocation = true;
-  });
+    homeState.update((s) {
+      if (s == null) return;
+      s.isLoading = true;
+      s.isFetchingLocation = true;
+    });
 
-  // Simulate location fetching
-  await Future.delayed(const Duration(milliseconds: 600));
+    // Simulate delay for smooth UI transition
+    await Future.delayed(const Duration(milliseconds: 600));
 
- // Fetch real location
-    final position = await LocationService.getCurrentLocation();
-
-    if (position == null) {
-      _showError("Location permission denied");
-      homeState.update((s) => s?.isFetchingLocation = false);
-      return;
-    }
+    // Fetch real location
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
 
     final lat = position.latitude;
     final lng = position.longitude;
-    final address = await LocationService.getAddressFromCoordinates(lat, lng);
 
-  homeState.update((s) {
-    if (s == null) return;
-    s.currentLatitude = lat;
-    s.currentLongitude = lng;
-    s.locationText = address ?? "Location Available";
-    s.hasLocation = true;
-    s.isFetchingLocation = false;
-  });
+    homeState.update((s) {
+      if (s == null) return;
+      s.isFetchingLocation = false;
+    });
 
-  // Get user
-  final user = await _storage.getUser();
-  final int? userId = user?["id"];
+    // Get user
+    final user = await _storage.getUser();
+    final int? userId = user?["id"];
 
-  if (userId == null) {
-    _showError("User ID missing");
-    homeState.update((s) => s?.isLoading = false);
-    return;
-  }
+    if (userId == null) {
+      _showError("User ID missing");
+      homeState.update((s) => s?.isLoading = false);
+      return;
+    }
 
-  // PUNCH IN
-  if (!homeState.value.isPunchedIn) {
+    // PUNCH IN
+    if (!homeState.value.isPunchedIn) {
+      // Reverse geocode ONLY on Punch IN
+      final locationText = await _locationRepo.getAreaFromCoordinates(lat, lng);
+
+      if (locationText != null) {
+        homeState.update((s) {
+          if (s == null) return;
+          s.locationText = locationText;
+        });
+
+        await _storage.saveCachedLocation(locationText);
+      }
+
+      try {
+        final response = await _attendanceRepo.punchIn(
+          userId: userId,
+          latitude: lat,
+          longitude: lng,
+        );
+
+        if (!response.success) {
+          _showError(response.message ?? "Punch IN failed");
+          homeState.update((s) => s?.isLoading = false);
+          return;
+        }
+
+        final data = response.data["data"];
+        final dt = DateTime.parse(data["lastPunchTime"]);
+
+        homeState.update((s) {
+          if (s == null) return;
+          s.isPunchedIn = true;
+          s.lastPunchInTime = dt;
+          s.lastPunchOutTime = null;
+          s.attendanceId = data["attendanceId"];
+          print("Saved AttendanceID: ${data["attendanceId"]}");
+          s.isLoading = false;
+        });
+
+        _showSuccess("Punch IN recorded");
+      } catch (e) {
+        _showError("Error: $e");
+        homeState.update((s) => s?.isLoading = false);
+      }
+
+      return;
+    }
+
+    // PUNCH OUT
     try {
-      final response = await _attendanceRepo.punchIn(
+      final attendanceId = homeState.value.attendanceId;
+
+      if (attendanceId == null) {
+        _showError("Cannot Punch Out — attendanceId missing");
+        homeState.update((s) => s?.isLoading = false);
+        return;
+      }
+
+      final response = await _attendanceRepo.punchOut(
         userId: userId,
+        attendanceId: attendanceId,
         latitude: lat,
         longitude: lng,
       );
 
       if (!response.success) {
-        _showError(response.message ?? "Punch IN failed");
+        _showError(response.message ?? "Punch OUT failed");
         homeState.update((s) => s?.isLoading = false);
         return;
       }
 
       final data = response.data["data"];
-      final dt = DateTime.parse(data["lastPunchTime"]);
+      final dt = DateTime.parse(data["lastPunchOutTime"]);
 
       homeState.update((s) {
         if (s == null) return;
-        s.isPunchedIn = true;
-        s.lastPunchInTime = dt;
-        s.lastPunchOutTime = null;
-        s.attendanceId = data["attendanceId"];   
-        print("Saved AttendanceID: ${data["attendanceId"]}");
-
-        s.statusText = "Punched In";
-        s.buttonText = "Punch Out";
+        s.isPunchedIn = false;
+        s.lastPunchOutTime = dt;
+        s.locationText = null; // Clear from state
         s.isLoading = false;
       });
 
-      _showSuccess("Punch IN recorded");
+      await _storage.clearCachedLocation(); // Clear from storage
 
+      _showSuccess("Punch OUT recorded");
     } catch (e) {
       _showError("Error: $e");
       homeState.update((s) => s?.isLoading = false);
     }
-
-    return;
   }
 
-  // 3️⃣ PUNCH OUT
-  try {
-    final attendanceId = homeState.value.attendanceId;
+  /// Logout
+  Future<void> logout() async {
+    final rememberedEmail = await _storage.getRememberedEmail();
 
-    if (attendanceId == null) {
-      _showError("Cannot Punch Out — attendanceId missing");
-      homeState.update((s) => s?.isLoading = false);
-      return;
+    await _storage.clearAll();
+
+    if (rememberedEmail != null) {
+      await _storage.saveRememberedEmail(rememberedEmail);
     }
-
-    final response = await _attendanceRepo.punchOut(
-      userId: userId,
-      attendanceId: attendanceId,
-      latitude: lat,
-      longitude: lng,
-    );
-
-    if (!response.success) {
-      _showError(response.message ?? "Punch OUT failed");
-      homeState.update((s) => s?.isLoading = false);
-      return;
-    }
-
-    final data = response.data["data"];
-    final dt = DateTime.parse(data["lastPunchOutTime"]);
 
     homeState.update((s) {
       if (s == null) return;
       s.isPunchedIn = false;
-      s.lastPunchOutTime = dt;
-      s.statusText = "Punched Out";
-      s.buttonText = "Punch In";
-      s.isLoading = false;
+      s.lastPunchInTime = null;
+      s.lastPunchOutTime = null;
+      s.attendanceId = null;
+      s.userEmail = rememberedEmail ?? "";
+      s.locationText = null;
     });
 
-    _showSuccess("Punch OUT recorded");
-
-  } catch (e) {
-    _showError("Error: $e");
-    homeState.update((s) => s?.isLoading = false);
+    Get.offAllNamed('/login');
   }
-}
-
-
-  /// Logout 
- Future<void> logout() async {
-  // Load remembered email
-  final rememberedEmail = await _storage.getRememberedEmail();
-
-  // Clear everything except remembered email
-  await _storage.clearAll();
-
-  // Restore remembered email if exists
-  if (rememberedEmail != null) {
-    await _storage.saveRememberedEmail(rememberedEmail);
-  }
-
-  // Reset UI state
-  homeState.update((s) {
-    if (s == null) return;
-    s.isPunchedIn = false;
-    s.lastPunchInTime = null;
-    s.lastPunchOutTime = null;
-    s.attendanceId = null;
-    s.userEmail = rememberedEmail ?? "";
-    s.statusText = "Not Punched In";
-    s.buttonText = "Punch In";
-    s.hasLocation = false;
-    s.currentLatitude = null;
-    s.currentLongitude = null;
-  });
-
-  Get.offAllNamed('/login');
-}
 
   void _showError(String msg) {
     Get.snackbar(

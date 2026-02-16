@@ -1,73 +1,64 @@
-/*
-==================== IMPLEMENTATION NOTES ====================
+# AimsTimekeeper
 
-This Flutter app follows MVVM architecture with GetX for state management.
+AimsTimekeeper is a production-ready Flutter application designed for attendance management. It features a robust architecture, beautiful UI, and integrated geo-location tracking for attendance accuracy.
 
-PROJECT STRUCTURE:
+## Architecture
+
+The project follows a modular architecture leveraged by the **GetX** ecosystem for state management, dependency injection, and routing. It emphasizes a clean separation of concerns using a **VM-B-V** (ViewModel-Binding-View) pattern within each feature.
+
+### Project Structure
+
+```text
 lib/
 ├── main.dart
 ├── core/
-│   ├── network/
-│   │   └── api_handler.dart          # Handles all API calls
-│   ├── routes/
-│   │   ├── app_routes.dart           # Route constants
-│   │   └── app_pages.dart            # Route configuration
-│   └── storage/
-│       └── storage_service.dart      # Local storage operations
-├── models/
-│   ├── user_model.dart              # User data model
-│   └── attendance_model.dart        # Attendance data model
-├── utils/
-│   ├── colors.dart                  # App color constants
-│   ├── strings.dart                 # String constants
-│   └── constants.dart               # API and app constants
-└── views/
-    ├── splash/
-    │   ├── splash_screen.dart       # Splash UI
-    │   ├── splash_controller.dart   # Splash logic
-    │   └── splash_binding.dart      # Splash dependencies
-    ├── login/
-    │   ├── login_screen.dart        # Login UI
-    │   ├── login_controller.dart    # Login logic
-    │   └── login_binding.dart       # Login dependencies
-    └── home/
-        ├── home_screen.dart         # Home UI
-        ├── home_controller.dart     # Home logic
-        └── home_binding.dart        # Home dependencies
+│   ├── network/          # API handlers and networking logic
+│   ├── routes/           # App navigation definitions (AppPages, AppRoutes)
+│   └── services/         # Persistent application-level services
+├── data/
+│   ├── models/           # Global data entities
+│   └── repositories/     # Data source abstractions and business logic
+├── features/             # Feature-specific modules
+│   ├── splash/           # Initial loading and routing logic
+│   ├── login/            # Authentication flow
+│   └── home/             # Main dashboard and attendance actions
+│       ├── bindings/     # Dependency injection setup
+│       ├── viewmodels/   # Business logic using GetxController
+│       └── views/        # UI layer
+└── utils/                # Global constants, colors, and date-time helpers
+```
 
-KEY FEATURES:
-1. MVVM Architecture with GetX
-2. Proper separation of concerns
-3. API Handler for all network calls
-4. Local storage for offline data
-5. Beautiful UI with gradient effects
-6. Form validation
-7. Loading states
-8. Error handling
-9. Real-time clock display
-10. Single button toggle for punch in/out
+## Key Features
 
-API INTEGRATION:
-- Update the baseUrl in lib/utils/constants.dart
-- API endpoints are already defined
-- API response handling is implemented
-- Token-based authentication ready
+- **MVVM with GetX**: Clean, reactive state management and navigation.
+- **Attendance Management**: Single-button toggle for Punch-In/Out.
+- **Reverse Geocoding (OSM)**: Integrates OpenStreetMap's Nominatim API to resolve GPS coordinates into human-readable locations (Area, State, Country).
+- **Location Caching**: Persistent caching of resolved locations in `SharedPreferences` to ensure immediate display on app launch.
+- **Enhanced UI**: Custom date formatting (e.g., "16th Feb 2026") and dynamic header displaying current recorded location.
+- **Robust Repository Pattern**: Decentralized logic with dedicated `AttendanceRepository` and `LocationRepository`.
 
-NEXT STEPS:
-1. Add your API base URL in constants.dart
-2. Adjust API response structure if needed
-3. Add more features as required
-4. Test with real API
+## Getting Started
 
-DEPENDENCIES REQUIRED (pubspec.yaml):
-dependencies:
-  flutter:
-    sdk: flutter
-  get: ^4.6.6
-  http: ^1.1.0
-  shared_preferences: ^2.2.2
-  intl: ^0.18.1
+### Prerequisites
 
-The app is production-ready with proper error handling, 
-loading states, and a clean architecture that's easy to maintain and scale.
-*/
+- Flutter SDK (^3.7.0)
+- Android Studio / VS Code
+- Dart SDK (^3.7.0)
+
+### Installation
+
+1. Clone the repository.
+2. Run `flutter pub get` to install dependencies.
+3. Configure the `baseUrl` in `lib/utils/constants.dart`.
+4. Run the app using `flutter run`.
+
+## Dependencies
+
+- `get`: State management & routing.
+- `http`: Networking.
+- `geolocator`: GPS location access.
+- `intl`: Date and time formatting.
+- `shared_preferences`: Local storage.
+
+---
+*Built with Flutter and productivity in mind.*
