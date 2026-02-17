@@ -1,4 +1,5 @@
 import 'package:aims_timekeeper/core/services/storage_service.dart';
+import 'package:aims_timekeeper/utils/date_time_utils.dart';
 import 'package:aims_timekeeper/data/repositories/attendance_repository.dart';
 import 'package:aims_timekeeper/data/repositories/location_repository.dart';
 import 'package:aims_timekeeper/utils/colors.dart';
@@ -34,7 +35,10 @@ class HomeState {
     this.attendanceId,
     this.locationText,
   }) : currentTime = currentTime ?? _formatTime(DateTime.now()),
-       currentDate = currentDate ?? _formatDate(DateTime.now());
+       currentDate = currentDate ?? _formatDate(DateTime.now()),
+       greeting = DateTimeUtils.getGreeting(DateTime.now());
+
+  String greeting;
 
   static String _formatTime(DateTime dt) =>
       "${dt.hour.toString().padLeft(2, '0')}:"
@@ -220,11 +224,12 @@ class HomeViewModel extends GetxController {
     final lat = position.latitude;
     final lng = position.longitude;
 
-    // Fetch address for API (replacing cache logic for API call)
+    // Fetch address for API (needed for backend)
     final locationText =
         await _locationRepo.getAreaFromCoordinates(lat, lng) ??
         "Unknown Location";
 
+    // DO NOT save to cache or update UI yet - wait for successful punch
     homeState.update((s) {
       if (s == null) return;
       s.isFetchingLocation = false;
@@ -258,11 +263,15 @@ class HomeViewModel extends GetxController {
         if (!response.success) {
           _showError(response.message ?? AppStrings.punchInFailed);
           homeState.update((s) => s?.isLoading = false);
+          // Location fetched but discarded on failure
           return;
         }
 
         final data = response.data["data"];
         final dt = DateTime.parse(data["lastPunchTime"]);
+
+        // SUCCESS: Now update UI and cache
+        await _storage.saveCachedLocation(locationText);
 
         homeState.update((s) {
           if (s == null) return;
@@ -270,6 +279,7 @@ class HomeViewModel extends GetxController {
           s.lastPunchInTime = dt;
           s.lastPunchOutTime = null;
           s.attendanceId = data["attendanceId"];
+          s.locationText = locationText;
           print("Saved AttendanceID: ${data["attendanceId"]}");
           s.isLoading = false;
         });

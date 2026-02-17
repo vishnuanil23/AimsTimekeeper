@@ -13,11 +13,33 @@ class DateTimeUtils {
   /// Format date → 23 Dec 2025
   static String formatDate(DateTime dt) {
     const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
 
     final monthName = months[dt.month - 1];
     return '${dt.day} $monthName ${dt.year}';
+  }
+
+  /// Get time-based greeting
+  static String getGreeting(DateTime dt) {
+    final hour = dt.hour;
+    if (hour >= 5 && hour < 12) {
+      return 'Good Morning';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
   }
 }

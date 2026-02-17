@@ -90,4 +90,6 @@ class AppStrings {
       'Location permission is permanently denied. Please enable it in settings.';
   static const String openSettings = 'Open Settings';
   static const String cancel = 'Cancel';
+  static const String yes = 'Yes';
+  static const String logoutConfirmation = 'Are you sure you want to logout?';
 }

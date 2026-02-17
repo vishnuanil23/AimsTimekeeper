@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/strings.dart';
 import '../viewmodels/home_viewmodel.dart';
+import '../widgets/logout_dialog.dart';
+import '../widgets/punch_button.dart';
 
 class HomeView extends GetView<HomeViewModel> {
   const HomeView({Key? key}) : super(key: key);
@@ -11,7 +13,7 @@ class HomeView extends GetView<HomeViewModel> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(context),
       body: RefreshIndicator(
         onRefresh: controller.refreshData,
         color: AppColors.primary,
@@ -27,7 +29,7 @@ class HomeView extends GetView<HomeViewModel> {
                   children: [
                     _buildStatusCard(),
                     const SizedBox(height: 24),
-                    _buildPunchButton(),
+                    PunchButton(controller: controller),
                     const SizedBox(height: 24),
                     _buildStatsRow(),
                     const SizedBox(height: 24),
@@ -43,7 +45,7 @@ class HomeView extends GetView<HomeViewModel> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: AppColors.primary,
       elevation: 0,
@@ -63,7 +65,13 @@ class HomeView extends GetView<HomeViewModel> {
         ),
         IconButton(
           icon: const Icon(Icons.logout, color: AppColors.white),
-          onPressed: controller.logout,
+          onPressed: () {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => LogoutDialog(onConfirm: controller.logout),
+            );
+          },
           tooltip: AppStrings.logout,
         ),
       ],
@@ -73,43 +81,62 @@ class HomeView extends GetView<HomeViewModel> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
+          colors: [AppColors.primary, AppColors.primaryLight],
         ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Obx(
-            () => Text(
-              '${AppStrings.welcomeBack}, ${controller.userName}!',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.white,
-                letterSpacing: 0.5,
-              ),
+            () => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${controller.homeState.value.greeting},',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white.withValues(alpha: 0.85),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  controller.userName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Obx(
             () => Text(
               controller.homeState.value.userEmail,
               style: TextStyle(
-                fontSize: 14,
-                color: AppColors.white.withOpacity(0.9),
+                fontSize: 13,
+                color: AppColors.white.withValues(alpha: 0.9),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Row(
             children: [
               const Icon(Icons.access_time, color: AppColors.white, size: 20),
@@ -187,9 +214,9 @@ class HomeView extends GetView<HomeViewModel> {
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3), width: 2),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
         ),
         child: Column(
           children: [
@@ -197,7 +224,7 @@ class HomeView extends GetView<HomeViewModel> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
+                color: color.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 40, color: color),
@@ -246,103 +273,6 @@ class HomeView extends GetView<HomeViewModel> {
     });
   }
 
-  Widget _buildPunchButton() {
-    return Obx(() {
-      final state = controller.homeState.value;
-      final color = state.isPunchedIn ? AppColors.punchOut : AppColors.punchIn;
-      final icon = state.isPunchedIn ? Icons.logout : Icons.login;
-      final isProcessing = state.isLoading || state.isFetchingLocation;
-
-      return Container(
-        width: double.infinity,
-        height: 200,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [color, color.withOpacity(0.8)],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: isProcessing ? null : controller.togglePunch,
-            borderRadius: BorderRadius.circular(20),
-            child: Center(
-              child:
-                  isProcessing
-                      ? Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.white,
-                            ),
-                            strokeWidth: 3,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            state.isFetchingLocation
-                                ? AppStrings.gettingLocation
-                                : AppStrings.processing,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppColors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      )
-                      : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(icon, size: 60, color: AppColors.white),
-                          const SizedBox(height: 16),
-                          Text(
-                            state.buttonText,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                color: AppColors.white,
-                                size: 16,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                AppStrings.locationWillBeRecorded,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
   Widget _buildStatsRow() {
     return Obx(() {
       final state = controller.homeState.value;
@@ -385,7 +315,7 @@ class HomeView extends GetView<HomeViewModel> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -397,7 +327,7 @@ class HomeView extends GetView<HomeViewModel> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -435,7 +365,7 @@ class HomeView extends GetView<HomeViewModel> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -447,7 +377,7 @@ class HomeView extends GetView<HomeViewModel> {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.1),
+              color: AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
