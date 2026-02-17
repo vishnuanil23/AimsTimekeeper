@@ -6,49 +6,47 @@ import '../models/attendance_model.dart';
 class AttendanceRepository {
   final ApiHandler _apiHandler = Get.find<ApiHandler>();
 
-  /// Punch in with latitude and longitude
+  /// Punch in with latitude, longitude and location address
   Future<ApiResponse> punchIn({
     required int userId,
     required double latitude,
     required double longitude,
+    required String location,
   }) async {
-    print('AttendanceRepository: Punch in request with location');
+    print('AttendanceRepository: Punch in request with location: $location');
     print('AttendanceRepository: Lat: $latitude, Long: $longitude');
-    
-    return await _apiHandler.post(
-      AppConstants.punchInEndpoint,
-      {
-         "userId": userId,
-        "action": "IN",
-        'latitude': latitude,
-        'longitude': longitude,
-      },
-    );
+
+    return await _apiHandler.post(AppConstants.punchInEndpoint, {
+      "userId": userId,
+      "action": "IN",
+      'latitude': latitude,
+      'longitude': longitude,
+      'location': location,
+    });
   }
 
-  /// Punch out with latitude and longitude
-Future<ApiResponse> punchOut({
-  required int userId,
-  required int attendanceId,
-  required double latitude,
-  required double longitude,
-}) async {
-  return await _apiHandler.post(
-     AppConstants.punchOutEndpoint,   
-    {
+  /// Punch out with latitude, longitude and location address
+  Future<ApiResponse> punchOut({
+    required int userId,
+    required int attendanceId,
+    required double latitude,
+    required double longitude,
+    required String location,
+  }) async {
+    return await _apiHandler.post(AppConstants.punchOutEndpoint, {
       "userId": userId,
       "attendanceId": attendanceId,
       "latitude": latitude,
       "longitude": longitude,
-      "action": "OUT"
-    },
-  );
-}
+      "location": location,
+      "action": "OUT",
+    });
+  }
 
   /// Get attendance status
   Future<ApiResponse> getAttendanceStatus() async {
     print('AttendanceRepository: Get attendance status');
-    
+
     return await _apiHandler.get(AppConstants.attendanceStatusEndpoint);
   }
 

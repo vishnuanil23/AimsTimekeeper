@@ -59,12 +59,12 @@ class HomeView extends GetView<HomeViewModel> {
         IconButton(
           icon: const Icon(Icons.refresh, color: AppColors.white),
           onPressed: controller.refreshData,
-          tooltip: 'Refresh',
+          tooltip: AppStrings.refresh,
         ),
         IconButton(
           icon: const Icon(Icons.logout, color: AppColors.white),
           onPressed: controller.logout,
-          tooltip: 'Logout',
+          tooltip: AppStrings.logout,
         ),
       ],
     );
@@ -232,7 +232,7 @@ class HomeView extends GetView<HomeViewModel> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Last action at ${state.lastActionTime}',
+                    '${AppStrings.lastActionAt} ${state.lastActionTime}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -291,8 +291,8 @@ class HomeView extends GetView<HomeViewModel> {
                           const SizedBox(height: 16),
                           Text(
                             state.isFetchingLocation
-                                ? 'Getting location...'
-                                : 'Processing...',
+                                ? AppStrings.gettingLocation
+                                : AppStrings.processing,
                             style: const TextStyle(
                               fontSize: 16,
                               color: AppColors.white,
@@ -325,7 +325,7 @@ class HomeView extends GetView<HomeViewModel> {
                               ),
                               SizedBox(width: 4),
                               Text(
-                                'Location will be recorded',
+                                AppStrings.locationWillBeRecorded,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.white,
@@ -352,7 +352,7 @@ class HomeView extends GetView<HomeViewModel> {
           Expanded(
             child: _buildStatCard(
               icon: Icons.timer_outlined,
-              title: 'Work Duration',
+              title: AppStrings.workDuration,
               value: state.formattedWorkDuration,
               color: AppColors.info,
             ),
@@ -361,7 +361,7 @@ class HomeView extends GetView<HomeViewModel> {
           Expanded(
             child: _buildStatCard(
               icon: Icons.event_available,
-              title: 'Status',
+              title: AppStrings.currentStatus,
               value: state.statusText,
               color: state.isPunchedIn ? AppColors.success : AppColors.error,
             ),
@@ -462,16 +462,16 @@ class HomeView extends GetView<HomeViewModel> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Location Privacy',
-                  style: TextStyle(
+                  AppStrings.locationPrivacy,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Your location is only recorded during punch in/out for attendance verification.',
+                const SizedBox(height: 4),
+                const Text(
+                  AppStrings.locationPrivacyDesc,
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,

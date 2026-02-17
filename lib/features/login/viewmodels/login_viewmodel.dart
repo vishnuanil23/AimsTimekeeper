@@ -39,9 +39,7 @@ class LoginViewModel extends GetxController {
   /// Setup listeners for text field changes
   void _setupListeners() {
     emailController.addListener(() {
-      loginState.value = loginState.value.copyWith(
-        email: emailController.text,
-      );
+      loginState.value = loginState.value.copyWith(email: emailController.text);
     });
 
     passwordController.addListener(() {
@@ -52,138 +50,153 @@ class LoginViewModel extends GetxController {
   }
 
   /// Load remembered email if exists
-Future<void> _loadRememberedEmail() async {
-  final rememberedEmail = await _storageService.getRememberedEmail();
+  Future<void> _loadRememberedEmail() async {
+    final rememberedEmail = await _storageService.getRememberedEmail();
 
-  if (rememberedEmail != null && rememberedEmail.isNotEmpty) {
-    emailController.text = rememberedEmail;
-    loginState.value = loginState.value.copyWith(
-      email: rememberedEmail,
-      rememberMe: true,
-    );
+    if (rememberedEmail != null && rememberedEmail.isNotEmpty) {
+      emailController.text = rememberedEmail;
+      loginState.value = loginState.value.copyWith(
+        email: rememberedEmail,
+        rememberMe: true,
+      );
+    }
   }
-}
 
   /// Toggle password visibility
   void togglePasswordVisibility() {
     loginState.value = loginState.value.copyWith(
       isPasswordVisible: !loginState.value.isPasswordVisible,
     );
-    print('LoginViewModel: Password visibility toggled: ${loginState.value.isPasswordVisible}');
+    print(
+      'LoginViewModel: Password visibility toggled: ${loginState.value.isPasswordVisible}',
+    );
   }
 
   /// Toggle remember me
   void toggleRememberMe(bool? value) async {
-  final newValue = value ?? false;
+    final newValue = value ?? false;
 
-  loginState.value = loginState.value.copyWith(rememberMe: newValue);
+    loginState.value = loginState.value.copyWith(rememberMe: newValue);
 
-  if (newValue) {
-    // Save email immediately when user checks remember me
-    await _storageService.saveRememberedEmail(emailController.text.trim());
-  } else {
-    // Clear if user unchecks remembering 
-    await _storageService.clearRememberedEmail();
-  }
-}
-
-/// Main login method (REAL API)
-Future<void> login() async {
-  print('LoginViewModel: Real login attempt started');
-
-  // Clear previous errors
-  loginState.value = loginState.value.copyWith(
-    errorMessage: null,
-    successMessage: null,
-  );
-
-  // Validate inputs
-  if (!_validateInputs()) {
-    print('LoginViewModel: Validation failed');
-    return;
-  }
-
-  loginState.value = loginState.value.copyWith(isLoading: true);
-
-  try {
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-
-    // Call repository → API
-    final response = await _authRepository.login(email, password);
-
-    if (!response.success) {
-      print("LoginViewModel: Login failed - ${response.message}");
-      _handleLoginError(response.message ?? "Something went wrong");
-      return;
-    }
-
-    print("LoginViewModel: Login success");
-
-    final data = response.data?["data"];       // Outer data
-    final userData = data?["user"];            // Inner user object
-
-    if (userData == null) {
-      _handleLoginError("Invalid server response");
-      return;
-    }
-    final hrmsUser = _authRepository.parseUser(userData);
-    // Save user as JSON map
-    await _storageService.saveUser(hrmsUser.toJson());
-
-    // Save dummy token to satisfy your ApiHandler header flow
-    await _storageService.saveToken("temp_token_${DateTime.now().millisecondsSinceEpoch}");
-    if (loginState.value.rememberMe) {
+    if (newValue) {
+      // Save email immediately when user checks remember me
       await _storageService.saveRememberedEmail(emailController.text.trim());
     } else {
+      // Clear if user unchecks remembering
       await _storageService.clearRememberedEmail();
     }
-    loginState.value = loginState.value.copyWith(
-      successMessage: AppStrings.loginSuccess,
-    );
-
-    _showSnackbar(
-      "Success",
-      AppStrings.loginSuccess,
-      AppColors.success,
-      icon: Icons.check_circle,
-    );
-
-    await Future.delayed(const Duration(milliseconds: 500));
-    Get.offAllNamed(AppRoutes.home); // Move to home
-  } catch (e) {
-    print("LoginViewModel: Real login exception - $e");
-    _handleLoginError(AppStrings.somethingWentWrong);
-  } finally {
-    loginState.value = loginState.value.copyWith(isLoading: false);
   }
-}
 
+  /// Main login method (REAL API)
+  Future<void> login() async {
+    print('LoginViewModel: Real login attempt started');
 
+    // Clear previous errors
+    loginState.value = loginState.value.copyWith(
+      errorMessage: null,
+      successMessage: null,
+    );
+
+    // Validate inputs
+    if (!_validateInputs()) {
+      print('LoginViewModel: Validation failed');
+      return;
+    }
+
+    loginState.value = loginState.value.copyWith(isLoading: true);
+
+    try {
+      final email = emailController.text.trim();
+      final password = passwordController.text.trim();
+
+      // Call repository → API
+      final response = await _authRepository.login(email, password);
+
+      if (!response.success) {
+        print("LoginViewModel: Login failed - ${response.message}");
+        _handleLoginError(response.message ?? AppStrings.somethingWentWrong);
+        return;
+      }
+
+      print("LoginViewModel: Login success");
+
+      final data = response.data?["data"]; // Outer data
+      final userData = data?["user"]; // Inner user object
+
+      if (userData == null) {
+        _handleLoginError(AppStrings.invalidServerResponse);
+        return;
+      }
+
+      final hrmsUser = _authRepository.parseUser(userData);
+      // Save user as JSON map
+      await _storageService.saveUser(hrmsUser.toJson());
+
+      // Save dummy token to satisfy your ApiHandler header flow
+      await _storageService.saveToken(
+        "temp_token_${DateTime.now().millisecondsSinceEpoch}",
+      );
+      if (loginState.value.rememberMe) {
+        await _storageService.saveRememberedEmail(emailController.text.trim());
+      } else {
+        await _storageService.clearRememberedEmail();
+      }
+      loginState.value = loginState.value.copyWith(
+        successMessage: AppStrings.loginSuccess,
+      );
+
+      _showSnackbar(
+        AppStrings.success,
+        AppStrings.loginSuccess,
+        AppColors.success,
+        icon: Icons.check_circle,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      Get.offAllNamed(AppRoutes.home); // Move to home
+    } catch (e) {
+      print("LoginViewModel: Real login exception - $e");
+      _handleLoginError(AppStrings.somethingWentWrong);
+    } finally {
+      loginState.value = loginState.value.copyWith(isLoading: false);
+    }
+  }
 
   /// Validate form inputs
   bool _validateInputs() {
     // Check if email is empty
     if (emailController.text.trim().isEmpty) {
-      _showSnackbar('Error', AppStrings.emailRequired, AppColors.error);
+      _showSnackbar(
+        AppStrings.error,
+        AppStrings.emailRequired,
+        AppColors.error,
+      );
       return false;
     }
 
     // Check if email is valid
     if (!loginState.value.isEmailValid) {
-      _showSnackbar('Error', AppStrings.emailInvalid, AppColors.error);
+      _showSnackbar(AppStrings.error, AppStrings.emailInvalid, AppColors.error);
       return false;
     }
 
     // Check if password is empty
     if (passwordController.text.isEmpty) {
-      _showSnackbar('Error', AppStrings.passwordRequired, AppColors.error);
+      _showSnackbar(
+        AppStrings.error,
+        AppStrings.passwordRequired,
+        AppColors.error,
+      );
       return false;
     }
 
     // Check password length
     if (passwordController.text.length < 6) {
-      _showSnackbar('Error', AppStrings.passwordMinLength, AppColors.error);
+      _showSnackbar(
+        AppStrings.error,
+        AppStrings.passwordMinLength,
+        AppColors.error,
+      );
       return false;
     }
 
@@ -196,16 +209,14 @@ Future<void> login() async {
     try {
       // Parse user model from response
       final user = _authRepository.parseUser(data['user']);
-      
-
 
       // Save token to local storage
       await _storageService.saveToken(data['token']);
-      
+
       print('LoginViewModel: Token saved');
 
-        await _storageService.clear();
-        await _storageService.clear();
+      await _storageService.clear();
+      await _storageService.clear();
 
       // Save user data to local storage
       await _storageService.saveUser(user.toJson());
@@ -218,7 +229,7 @@ Future<void> login() async {
 
       // Show success message
       _showSnackbar(
-        'Success',
+        AppStrings.success,
         AppStrings.loginSuccess,
         AppColors.success,
         icon: Icons.check_circle,
@@ -232,17 +243,15 @@ Future<void> login() async {
       Get.offAllNamed(AppRoutes.home);
     } catch (e) {
       print('LoginViewModel: Error handling login success: $e');
-      _handleLoginError('Failed to process login data');
+      _handleLoginError(AppStrings.failedToProcessLogin);
     }
   }
 
   /// Handle login error
   void _handleLoginError(String message) {
-    loginState.value = loginState.value.copyWith(
-      errorMessage: message,
-    );
+    loginState.value = loginState.value.copyWith(errorMessage: message);
 
-    _showSnackbar('Error', message, AppColors.error);
+    _showSnackbar(AppStrings.error, message, AppColors.error);
   }
 
   /// Show snackbar message
@@ -258,9 +267,10 @@ Future<void> login() async {
       backgroundColor: backgroundColor,
       colorText: AppColors.white,
       icon: Icon(
-        icon ?? (title == 'Error' ? Icons.error : Icons.info),
+        icon ?? (title == AppStrings.error ? Icons.error : Icons.info),
         color: AppColors.white,
       ),
+
       snackPosition: SnackPosition.BOTTOM,
       margin: const EdgeInsets.all(16),
       borderRadius: 12,

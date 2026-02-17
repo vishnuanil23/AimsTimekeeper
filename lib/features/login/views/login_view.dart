@@ -105,31 +105,33 @@ class LoginView extends GetView<LoginViewModel> {
       children: [
         _buildFieldLabel(AppStrings.email, Icons.email_outlined),
         const SizedBox(height: 8),
-        Obx(() => TextField(
-              controller: controller.emailController,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                hintText: AppStrings.emailHint,
-                hintStyle: const TextStyle(color: AppColors.textTertiary),
-                prefixIcon: const Icon(
-                  Icons.email_outlined,
-                  color: AppColors.textSecondary,
-                ),
-                errorText: controller.loginState.value.emailError,
-                filled: true,
-                fillColor: AppColors.surface,
-                border: _buildInputBorder(),
-                enabledBorder: _buildInputBorder(),
-                focusedBorder: _buildInputBorder(isFocused: true),
-                errorBorder: _buildInputBorder(isError: true),
-                focusedErrorBorder: _buildInputBorder(isError: true),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
+        Obx(
+          () => TextField(
+            controller: controller.emailController,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(
+              hintText: AppStrings.emailHint,
+              hintStyle: const TextStyle(color: AppColors.textTertiary),
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: AppColors.textSecondary,
               ),
-            )),
+              errorText: controller.loginState.value.emailError,
+              filled: true,
+              fillColor: AppColors.surface,
+              border: _buildInputBorder(),
+              enabledBorder: _buildInputBorder(),
+              focusedBorder: _buildInputBorder(isFocused: true),
+              errorBorder: _buildInputBorder(isError: true),
+              focusedErrorBorder: _buildInputBorder(isError: true),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -141,41 +143,43 @@ class LoginView extends GetView<LoginViewModel> {
       children: [
         _buildFieldLabel(AppStrings.password, Icons.lock_outline),
         const SizedBox(height: 8),
-        Obx(() => TextField(
-              controller: controller.passwordController,
-              obscureText: !controller.isPasswordVisible,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => controller.login(),
-              decoration: InputDecoration(
-                hintText: AppStrings.passwordHint,
-                hintStyle: const TextStyle(color: AppColors.textTertiary),
-                prefixIcon: const Icon(
-                  Icons.lock_outline,
+        Obx(
+          () => TextField(
+            controller: controller.passwordController,
+            obscureText: !controller.isPasswordVisible,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => controller.login(),
+            decoration: InputDecoration(
+              hintText: AppStrings.passwordHint,
+              hintStyle: const TextStyle(color: AppColors.textTertiary),
+              prefixIcon: const Icon(
+                Icons.lock_outline,
+                color: AppColors.textSecondary,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  controller.isPasswordVisible
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   color: AppColors.textSecondary,
                 ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    controller.isPasswordVisible
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    color: AppColors.textSecondary,
-                  ),
-                  onPressed: controller.togglePasswordVisibility,
-                ),
-                errorText: controller.loginState.value.passwordError,
-                filled: true,
-                fillColor: AppColors.surface,
-                border: _buildInputBorder(),
-                enabledBorder: _buildInputBorder(),
-                focusedBorder: _buildInputBorder(isFocused: true),
-                errorBorder: _buildInputBorder(isError: true),
-                focusedErrorBorder: _buildInputBorder(isError: true),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
+                onPressed: controller.togglePasswordVisibility,
               ),
-            )),
+              errorText: controller.loginState.value.passwordError,
+              filled: true,
+              fillColor: AppColors.surface,
+              border: _buildInputBorder(),
+              enabledBorder: _buildInputBorder(),
+              focusedBorder: _buildInputBorder(isFocused: true),
+              errorBorder: _buildInputBorder(isError: true),
+              focusedErrorBorder: _buildInputBorder(isError: true),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -206,9 +210,10 @@ class LoginView extends GetView<LoginViewModel> {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: isError
-            ? AppColors.error
-            : isFocused
+        color:
+            isError
+                ? AppColors.error
+                : isFocused
                 ? AppColors.primary
                 : AppColors.border,
         width: isFocused ? 2 : 1,
@@ -221,30 +226,29 @@ class LoginView extends GetView<LoginViewModel> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Obx(() => Row(
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Checkbox(
-                    value: controller.loginState.value.rememberMe,
-                    onChanged: controller.toggleRememberMe,
-                    activeColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+        Obx(
+          () => Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: controller.loginState.value.rememberMe,
+                  onChanged: controller.toggleRememberMe,
+                  activeColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Remember me',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            )),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                AppStrings.rememberMe,
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -259,21 +263,23 @@ class LoginView extends GetView<LoginViewModel> {
         height: 56,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: isFormValid && !isLoading
-              ? const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                )
-              : null,
+          gradient:
+              isFormValid && !isLoading
+                  ? const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
+                  )
+                  : null,
           color: isFormValid && !isLoading ? null : AppColors.border,
-          boxShadow: isFormValid && !isLoading
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
+          boxShadow:
+              isFormValid && !isLoading
+                  ? [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                  : null,
         ),
         child: ElevatedButton(
           onPressed: isLoading || !isFormValid ? null : controller.login,
@@ -284,55 +290,41 @@ class LoginView extends GetView<LoginViewModel> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          child: isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
-                  ),
-                )
-              : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      AppStrings.loginButton,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.white,
-                        letterSpacing: 0.5,
+          child:
+              isLoading
+                  ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.white,
                       ),
                     ),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, color: AppColors.white, size: 20),
-                  ],
-                ),
+                  )
+                  : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        AppStrings.loginButton,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: AppColors.white,
+                        size: 20,
+                      ),
+                    ],
+                  ),
         ),
       );
     });
-  }
-
-  /// Build divider with "OR" text
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'OR',
-            style: TextStyle(
-              color: AppColors.textSecondary.withOpacity(0.7),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.border)),
-      ],
-    );
   }
 
   /// Build sign up section

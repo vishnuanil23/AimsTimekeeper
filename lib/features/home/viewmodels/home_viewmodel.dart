@@ -2,6 +2,8 @@ import 'package:aims_timekeeper/core/services/storage_service.dart';
 import 'package:aims_timekeeper/data/repositories/attendance_repository.dart';
 import 'package:aims_timekeeper/data/repositories/location_repository.dart';
 import 'package:aims_timekeeper/utils/colors.dart';
+import 'package:aims_timekeeper/core/services/location_service.dart';
+import 'package:aims_timekeeper/utils/strings.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 
@@ -21,6 +23,7 @@ class HomeState {
   HomeState({
     this.userEmail = "",
     this.userName = "User",
+
     String? currentTime,
     String? currentDate,
     this.isPunchedIn = false,
@@ -40,47 +43,50 @@ class HomeState {
 
   static String _formatDate(DateTime dt) {
     final day = dt.day;
-    String suffix = 'th';
+    String suffix = AppStrings.th;
     if (day >= 11 && day <= 13) {
-      suffix = 'th';
+      suffix = AppStrings.th;
     } else {
       switch (day % 10) {
         case 1:
-          suffix = 'st';
+          suffix = AppStrings.st;
           break;
         case 2:
-          suffix = 'nd';
+          suffix = AppStrings.nd;
           break;
         case 3:
-          suffix = 'rd';
+          suffix = AppStrings.rd;
           break;
         default:
-          suffix = 'th';
+          suffix = AppStrings.th;
       }
     }
 
     final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      AppStrings.jan,
+      AppStrings.feb,
+      AppStrings.mar,
+      AppStrings.apr,
+      AppStrings.may,
+      AppStrings.jun,
+      AppStrings.jul,
+      AppStrings.aug,
+      AppStrings.sep,
+      AppStrings.oct,
+      AppStrings.nov,
+      AppStrings.dec,
     ];
+
     final month = months[dt.month - 1];
 
     return "$day$suffix $month ${dt.year}";
   }
 
   // Computed properties for UI
-  String get statusText => isPunchedIn ? "Punched In" : "Not Punched In";
-  String get buttonText => isPunchedIn ? "Punch Out" : "Punch In";
+  String get statusText =>
+      isPunchedIn ? AppStrings.punchIn : AppStrings.notPunchedIn;
+  String get buttonText =>
+      isPunchedIn ? AppStrings.punchOut : AppStrings.punchIn;
 
   String get lastActionTime {
     final dt = lastPunchOutTime ?? lastPunchInTime;
@@ -182,52 +188,75 @@ class HomeViewModel extends GetxController {
     // Simulate delay for smooth UI transition
     await Future.delayed(const Duration(milliseconds: 600));
 
-    // Fetch real location
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    // Fetch real location - handles permission requests
+    final position = await LocationService.getCurrentLocation();
+
+    if (position == null) {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.deniedForever) {
+        Get.defaultDialog(
+          title: AppStrings.error,
+          middleText: AppStrings.locationPermissionPermanent,
+          textConfirm: AppStrings.openSettings,
+          textCancel: AppStrings.cancel,
+          confirmTextColor: AppColors.white,
+          onConfirm: () {
+            Geolocator.openAppSettings();
+            Get.back();
+          },
+        );
+      } else {
+        _showError(AppStrings.locationPermissionDenied);
+      }
+
+      homeState.update((s) {
+        if (s == null) return;
+        s.isLoading = false;
+        s.isFetchingLocation = false;
+      });
+      return;
+    }
 
     final lat = position.latitude;
     final lng = position.longitude;
 
+    // Fetch address for API (replacing cache logic for API call)
+    final locationText =
+        await _locationRepo.getAreaFromCoordinates(lat, lng) ??
+        "Unknown Location";
+
     homeState.update((s) {
       if (s == null) return;
       s.isFetchingLocation = false;
+      // Update UI with fresh location
+      s.locationText = locationText;
     });
+
+    // Save to cache for app display persistence
+    await _storage.saveCachedLocation(locationText);
 
     // Get user
     final user = await _storage.getUser();
     final int? userId = user?["id"];
 
     if (userId == null) {
-      _showError("User ID missing");
+      _showError(AppStrings.userIdMissing);
       homeState.update((s) => s?.isLoading = false);
       return;
     }
 
     // PUNCH IN
     if (!homeState.value.isPunchedIn) {
-      // Reverse geocode ONLY on Punch IN
-      final locationText = await _locationRepo.getAreaFromCoordinates(lat, lng);
-
-      if (locationText != null) {
-        homeState.update((s) {
-          if (s == null) return;
-          s.locationText = locationText;
-        });
-
-        await _storage.saveCachedLocation(locationText);
-      }
-
       try {
         final response = await _attendanceRepo.punchIn(
           userId: userId,
           latitude: lat,
           longitude: lng,
+          location: locationText,
         );
 
         if (!response.success) {
-          _showError(response.message ?? "Punch IN failed");
+          _showError(response.message ?? AppStrings.punchInFailed);
           homeState.update((s) => s?.isLoading = false);
           return;
         }
@@ -245,9 +274,9 @@ class HomeViewModel extends GetxController {
           s.isLoading = false;
         });
 
-        _showSuccess("Punch IN recorded");
+        _showSuccess(AppStrings.punchInRecorded);
       } catch (e) {
-        _showError("Error: $e");
+        _showError("${AppStrings.error}: $e");
         homeState.update((s) => s?.isLoading = false);
       }
 
@@ -259,7 +288,7 @@ class HomeViewModel extends GetxController {
       final attendanceId = homeState.value.attendanceId;
 
       if (attendanceId == null) {
-        _showError("Cannot Punch Out — attendanceId missing");
+        _showError(AppStrings.attendanceIdMissing);
         homeState.update((s) => s?.isLoading = false);
         return;
       }
@@ -269,10 +298,11 @@ class HomeViewModel extends GetxController {
         attendanceId: attendanceId,
         latitude: lat,
         longitude: lng,
+        location: locationText,
       );
 
       if (!response.success) {
-        _showError(response.message ?? "Punch OUT failed");
+        _showError(response.message ?? AppStrings.punchOutFailed);
         homeState.update((s) => s?.isLoading = false);
         return;
       }
@@ -290,9 +320,9 @@ class HomeViewModel extends GetxController {
 
       await _storage.clearCachedLocation(); // Clear from storage
 
-      _showSuccess("Punch OUT recorded");
+      _showSuccess(AppStrings.punchOutRecorded);
     } catch (e) {
-      _showError("Error: $e");
+      _showError("${AppStrings.error}: $e");
       homeState.update((s) => s?.isLoading = false);
     }
   }
@@ -322,7 +352,7 @@ class HomeViewModel extends GetxController {
 
   void _showError(String msg) {
     Get.snackbar(
-      'Error',
+      AppStrings.error,
       msg,
       backgroundColor: AppColors.error,
       colorText: AppColors.white,
@@ -331,7 +361,7 @@ class HomeViewModel extends GetxController {
 
   void _showSuccess(String msg) {
     Get.snackbar(
-      'Success',
+      AppStrings.success,
       msg,
       backgroundColor: AppColors.success,
       colorText: AppColors.white,
