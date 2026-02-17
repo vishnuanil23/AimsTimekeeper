@@ -233,7 +233,12 @@ class HomeViewModel extends GetxController {
     homeState.update((s) {
       if (s == null) return;
       s.isFetchingLocation = false;
+      // Update UI with fresh location
+      s.locationText = locationText;
     });
+
+    // Save to cache for app display persistence
+    await _storage.saveCachedLocation(locationText);
 
     // Get user
     final user = await _storage.getUser();
