@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../utils/constants.dart';
 
 class LocationRepository {
   Future<String?> getAreaFromCoordinates(
@@ -8,14 +9,14 @@ class LocationRepository {
   ) async {
     try {
       final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/reverse"
+        "${AppConstants.nominatimUrl}"
         "?lat=$latitude&lon=$longitude&format=jsonv2",
       );
 
       final response = await http.get(
         url,
         headers: {
-          "User-Agent": "hrms-attendance-app",
+          "User-Agent": AppConstants.userAgent,
           "Accept-Language": "en",
         },
       );
