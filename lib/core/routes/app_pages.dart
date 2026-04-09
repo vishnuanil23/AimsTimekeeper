@@ -1,4 +1,6 @@
 import 'package:aims_timekeeper/features/home/view/home_view.dart';
+import 'package:aims_timekeeper/features/leave/bindings/leave_binding.dart';
+import 'package:aims_timekeeper/features/leave/views/leave_view.dart';
 import 'package:get/get.dart';
 import '../../features/splash/views/splash_view.dart';
 import '../../features/splash/bindings/splash_binding.dart';
@@ -23,6 +25,11 @@ class AppPages {
       name: AppRoutes.home,
       page: () => const HomeView(),
       binding: HomeBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.leave,
+      page: () => const LeaveView(),
+      binding: LeaveBinding(),
     ),
   ];
 }

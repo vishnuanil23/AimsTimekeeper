@@ -31,6 +31,41 @@ class AppStrings {
   static const String lastActionAt = 'Last action at';
   static const String locationWillBeRecorded = 'Location will be recorded';
   static const String workDuration = 'Work Duration';
+  static const String applyLeave = 'Apply Leave';
+  static const String applyLeaveDesc = 'Quick access for leave requests';
+  static const String leaveManagement = 'Leave Management';
+  static const String leaveHistory = 'Leave History';
+  static const String leaveType = 'Leave Type';
+  static const String fromDate = 'From Date';
+  static const String toDate = 'To Date';
+  static const String duration = 'Duration';
+  static const String session = 'Session';
+  static const String fullDay = 'Full Day';
+  static const String firstHalf = 'First Half';
+  static const String secondHalf = 'Second Half';
+  static const String contactDuringLeave = 'Contact During Leave';
+  static const String reason = 'Reason';
+  static const String reasonHint = 'Briefly describe the reason for leave...';
+  static const String attachment = 'Attachment';
+  static const String optional = 'optional';
+  static const String tapToUploadDocument = 'Tap to upload document';
+  static const String attachmentFormats = 'PDF, JPG, PNG up to 5MB';
+  static const String submitApplication = 'Submit Application';
+  static const String annualLeave = 'Annual Leave';
+  static const String sickLeave = 'Sick Leave';
+  static const String casualLeave = 'Casual Leave';
+  static const String maternityPaternityLeave = 'Maternity / Paternity';
+  static const String emergencyLeave = 'Emergency Leave';
+  static const String unpaidLeave = 'Unpaid Leave';
+  static const String all = 'All';
+  static const String pending = 'Pending';
+  static const String approved = 'Approved';
+  static const String rejected = 'Rejected';
+  static const String appliedOn = 'Applied on';
+  static const String daysSuffix = 'Days';
+  static const String daySuffix = 'Day';
+  static const String reasonPrefix = 'Reason:';
+  static const String leaveTabSubtitle = 'Manage and track your leave requests';
   static const String locationPrivacy = 'Location Privacy';
   static const String locationPrivacyDesc =
       'Your location is only recorded during punch in/out for attendance verification.';
@@ -92,4 +127,13 @@ class AppStrings {
   static const String cancel = 'Cancel';
   static const String yes = 'Yes';
   static const String logoutConfirmation = 'Are you sure you want to logout?';
+  static const String leaveFeatureComingSoon =
+      'Leave application will be added soon';
+  static const String leaveAppliedSuccess = 'Leave application submitted';
+  static const String selectValidDates =
+      'Please select a valid leave date range';
+  static const String contactRequired = 'Contact number is required';
+  static const String reasonRequired = 'Reason is required';
+  static const String attachmentUploadSoon =
+      'Attachment upload will be added soon';
 }

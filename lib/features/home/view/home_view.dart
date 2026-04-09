@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/strings.dart';
 import '../viewmodels/home_viewmodel.dart';
@@ -7,7 +8,7 @@ import '../widgets/logout_dialog.dart';
 import '../widgets/punch_button.dart';
 
 class HomeView extends GetView<HomeViewModel> {
-  const HomeView({Key? key}) : super(key: key);
+  const HomeView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +31,8 @@ class HomeView extends GetView<HomeViewModel> {
                     _buildStatusCard(),
                     const SizedBox(height: 24),
                     PunchButton(controller: controller),
+                    const SizedBox(height: 18),
+                    _buildApplyLeaveCard(context),
                     const SizedBox(height: 24),
                     _buildStatsRow(),
                     const SizedBox(height: 24),
@@ -212,7 +215,7 @@ class HomeView extends GetView<HomeViewModel> {
 
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
@@ -221,19 +224,19 @@ class HomeView extends GetView<HomeViewModel> {
         child: Column(
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 48,
+              height: 38,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 40, color: color),
+              child: Icon(icon, size: 34, color: color),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             const Text(
               AppStrings.currentStatus,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
@@ -242,12 +245,12 @@ class HomeView extends GetView<HomeViewModel> {
             Text(
               state.statusText,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 21,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (state.lastPunchInTime != null || state.lastPunchOutTime != null)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -301,6 +304,79 @@ class HomeView extends GetView<HomeViewModel> {
     });
   }
 
+  Widget _buildApplyLeaveCard(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Get.toNamed(AppRoutes.leave),
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.event_note_rounded,
+                  color: AppColors.warning,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.applyLeave,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      AppStrings.applyLeaveDesc,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: AppColors.textTertiary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatCard({
     required IconData icon,
     required String title,
@@ -308,7 +384,7 @@ class HomeView extends GetView<HomeViewModel> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -323,20 +399,21 @@ class HomeView extends GetView<HomeViewModel> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             title,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
             ),
@@ -345,10 +422,12 @@ class HomeView extends GetView<HomeViewModel> {
           Text(
             value,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: color,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -393,14 +472,14 @@ class HomeView extends GetView<HomeViewModel> {
               children: [
                 Text(
                   AppStrings.locationPrivacy,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
+                SizedBox(height: 4),
+                Text(
                   AppStrings.locationPrivacyDesc,
                   style: TextStyle(
                     fontSize: 13,
