@@ -6,6 +6,7 @@ class AppConstants {
   static const String punchInEndpoint = '/attendance/punch';
   static const String punchOutEndpoint = '/attendance/punch';
   static const String attendanceStatusEndpoint = '/attendance/status';
+  static const String leaveTypesEndpoint = '/leave/types';
 
   // External APIs
   static const String nominatimUrl =

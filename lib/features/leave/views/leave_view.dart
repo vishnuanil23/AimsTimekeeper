@@ -3,7 +3,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/strings.dart';
-import '../models/leave_model.dart';
+import '../models/leave_history_model.dart';
+import '../models/leave_type_model.dart';
 import '../viewmodels/leave_viewmodel.dart';
 
 class LeaveView extends GetView<LeaveViewModel> {
@@ -199,7 +200,8 @@ class LeaveView extends GetView<LeaveViewModel> {
             const SizedBox(height: 6),
             _buildDropdownField(
               value: state.selectedLeaveType,
-              items: controller.leaveTypes,
+              items: state.leaveTypes,
+              isLoading: state.isLoadingLeaveTypes,
               onChanged: controller.selectLeaveType,
             ),
             const SizedBox(height: 14),
@@ -250,15 +252,6 @@ class LeaveView extends GetView<LeaveViewModel> {
                       .toList(),
             ),
             const SizedBox(height: 14),
-            _buildFieldLabel(AppStrings.contactDuringLeave),
-            const SizedBox(height: 6),
-            _buildTextField(
-              controller: controller.contactController,
-              hintText: '+91 XXXXX XXXXX',
-              keyboardType: TextInputType.phone,
-              maxLines: 1,
-            ),
-            const SizedBox(height: 14),
             _buildFieldLabel(AppStrings.reason),
             const SizedBox(height: 6),
             _buildTextField(
@@ -267,19 +260,6 @@ class LeaveView extends GetView<LeaveViewModel> {
               keyboardType: TextInputType.multiline,
               maxLines: 4,
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                _buildFieldLabel(AppStrings.attachment),
-                const SizedBox(width: 4),
-                const Text(
-                  '(${AppStrings.optional})',
-                  style: TextStyle(fontSize: 11, color: Color(0xFFB0B4C3)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            _buildAttachmentArea(),
             const SizedBox(height: 18),
             _buildSubmitButton(state.isSubmitting),
           ],
@@ -301,9 +281,10 @@ class LeaveView extends GetView<LeaveViewModel> {
   }
 
   Widget _buildDropdownField({
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
+    required LeaveTypeItem? value,
+    required List<LeaveTypeItem> items,
+    required bool isLoading,
+    required ValueChanged<LeaveTypeItem?> onChanged,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -313,9 +294,18 @@ class LeaveView extends GetView<LeaveViewModel> {
         border: Border.all(color: const Color(0xFFD0D4E0)),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
+        child: DropdownButton<LeaveTypeItem>(
           value: value,
           isExpanded: true,
+          hint: Text(
+            isLoading
+                ? AppStrings.loadingLeaveTypes
+                : AppStrings.noLeaveTypesAvailable,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
             color: AppColors.textSecondary,
@@ -324,13 +314,13 @@ class LeaveView extends GetView<LeaveViewModel> {
           items:
               items
                   .map(
-                    (item) => DropdownMenuItem<String>(
+                    (item) => DropdownMenuItem<LeaveTypeItem>(
                       value: item,
-                      child: Text(item),
+                      child: Text(item.name),
                     ),
                   )
                   .toList(),
-          onChanged: onChanged,
+          onChanged: items.isEmpty ? null : onChanged,
         ),
       ),
     );
@@ -476,47 +466,6 @@ class LeaveView extends GetView<LeaveViewModel> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAttachmentArea() {
-    return Material(
-      color: const Color(0xFFF7F8FC),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: controller.uploadAttachmentPlaceholder,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: const Color(0xFFC0C4D8),
-              style: BorderStyle.solid,
-            ),
-          ),
-          child: const Column(
-            children: [
-              Icon(
-                Icons.description_outlined,
-                size: 22,
-                color: AppColors.primary,
-              ),
-              SizedBox(height: 8),
-              Text(
-                AppStrings.tapToUploadDocument,
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              SizedBox(height: 3),
-              Text(
-                AppStrings.attachmentFormats,
-                style: TextStyle(fontSize: 11, color: Color(0xFF9EA3B5)),
-              ),
-            ],
-          ),
         ),
       ),
     );

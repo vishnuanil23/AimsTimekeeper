@@ -43,20 +43,9 @@ class AppStrings {
   static const String fullDay = 'Full Day';
   static const String firstHalf = 'First Half';
   static const String secondHalf = 'Second Half';
-  static const String contactDuringLeave = 'Contact During Leave';
   static const String reason = 'Reason';
   static const String reasonHint = 'Briefly describe the reason for leave...';
-  static const String attachment = 'Attachment';
-  static const String optional = 'optional';
-  static const String tapToUploadDocument = 'Tap to upload document';
-  static const String attachmentFormats = 'PDF, JPG, PNG up to 5MB';
   static const String submitApplication = 'Submit Application';
-  static const String annualLeave = 'Annual Leave';
-  static const String sickLeave = 'Sick Leave';
-  static const String casualLeave = 'Casual Leave';
-  static const String maternityPaternityLeave = 'Maternity / Paternity';
-  static const String emergencyLeave = 'Emergency Leave';
-  static const String unpaidLeave = 'Unpaid Leave';
   static const String all = 'All';
   static const String pending = 'Pending';
   static const String approved = 'Approved';
@@ -132,8 +121,8 @@ class AppStrings {
   static const String leaveAppliedSuccess = 'Leave application submitted';
   static const String selectValidDates =
       'Please select a valid leave date range';
-  static const String contactRequired = 'Contact number is required';
   static const String reasonRequired = 'Reason is required';
-  static const String attachmentUploadSoon =
-      'Attachment upload will be added soon';
+  static const String leaveTypeRequired = 'Leave type is required';
+  static const String loadingLeaveTypes = 'Loading leave types...';
+  static const String noLeaveTypesAvailable = 'No leave types available';
 }

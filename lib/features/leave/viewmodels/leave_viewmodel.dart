@@ -1,23 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../data/repositories/leave_repository.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/strings.dart';
+import '../models/leave_history_model.dart';
 import '../models/leave_model.dart';
+import '../models/leave_type_model.dart';
 
 class LeaveViewModel extends GetxController {
-  final contactController = TextEditingController();
+  final LeaveRepository _leaveRepository = Get.find<LeaveRepository>();
   final reasonController = TextEditingController();
 
   final Rx<LeaveModel> leaveState = LeaveModel().obs;
-
-  List<String> get leaveTypes => const [
-    AppStrings.annualLeave,
-    AppStrings.sickLeave,
-    AppStrings.casualLeave,
-    AppStrings.maternityPaternityLeave,
-    AppStrings.emergencyLeave,
-    AppStrings.unpaidLeave,
-  ];
 
   List<String> get filterOptions => const [
     AppStrings.all,
@@ -36,22 +30,16 @@ class LeaveViewModel extends GetxController {
   void onInit() {
     super.onInit();
     _setupListeners();
+    _loadLeaveTypes();
   }
 
   @override
   void onClose() {
-    contactController.dispose();
     reasonController.dispose();
     super.onClose();
   }
 
   void _setupListeners() {
-    contactController.addListener(() {
-      leaveState.value = leaveState.value.copyWith(
-        contactNumber: contactController.text,
-      );
-    });
-
     reasonController.addListener(() {
       leaveState.value = leaveState.value.copyWith(
         reason: reasonController.text,
@@ -65,9 +53,72 @@ class LeaveViewModel extends GetxController {
     );
   }
 
-  void selectLeaveType(String? value) {
+  void selectLeaveType(LeaveTypeItem? value) {
     if (value == null) return;
     leaveState.value = leaveState.value.copyWith(selectedLeaveType: value);
+  }
+
+  Future<void> _loadLeaveTypes() async {
+    leaveState.value = leaveState.value.copyWith(isLoadingLeaveTypes: true);
+
+    try {
+      final response = await _leaveRepository.getLeaveTypes();
+
+      if (!response.success) {
+        _showSnackbar(
+          AppStrings.error,
+          response.message ?? AppStrings.somethingWentWrong,
+          AppColors.error,
+          Icons.error_outline_rounded,
+        );
+        leaveState.value = leaveState.value.copyWith(
+          isLoadingLeaveTypes: false,
+        );
+        return;
+      }
+
+      final leaveTypes = _extractLeaveTypes(response.data);
+      final selectedLeaveType = leaveTypes.isNotEmpty ? leaveTypes.first : null;
+
+      leaveState.value = leaveState.value.copyWith(
+        isLoadingLeaveTypes: false,
+        leaveTypes: leaveTypes,
+        selectedLeaveType: selectedLeaveType,
+      );
+    } catch (_) {
+      leaveState.value = leaveState.value.copyWith(isLoadingLeaveTypes: false);
+      _showSnackbar(
+        AppStrings.error,
+        AppStrings.somethingWentWrong,
+        AppColors.error,
+        Icons.error_outline_rounded,
+      );
+    }
+  }
+
+  List<LeaveTypeItem> _extractLeaveTypes(dynamic data) {
+    dynamic rawList = data;
+
+    if (rawList is Map<String, dynamic>) {
+      rawList = rawList['data'] ?? rawList['items'] ?? rawList['leaveTypes'];
+    }
+
+    if (rawList is! List) return [];
+
+    return rawList
+        .map((item) {
+          if (item is Map<String, dynamic>) {
+            final leaveTypeId = item['leaveTypeId'];
+            final name = item['name'];
+
+            if (leaveTypeId is int && name != null) {
+              return LeaveTypeItem.fromJson(item);
+            }
+          }
+          return null;
+        })
+        .whereType<LeaveTypeItem>()
+        .toList();
   }
 
   void selectSession(String session) {
@@ -136,15 +187,6 @@ class LeaveViewModel extends GetxController {
     );
   }
 
-  void uploadAttachmentPlaceholder() {
-    _showSnackbar(
-      AppStrings.attachment,
-      AppStrings.attachmentUploadSoon,
-      AppColors.info,
-      Icons.attach_file_rounded,
-    );
-  }
-
   Future<void> submitLeaveApplication() async {
     if (!_validateForm()) return;
 
@@ -155,7 +197,7 @@ class LeaveViewModel extends GetxController {
     final currentState = leaveState.value;
     final newHistory = [
       LeaveHistoryItem(
-        leaveType: currentState.selectedLeaveType,
+        leaveType: currentState.selectedLeaveType!.name,
         fromDate: currentState.fromDate,
         toDate: currentState.toDate,
         status: AppStrings.pending,
@@ -165,7 +207,6 @@ class LeaveViewModel extends GetxController {
       ...currentState.historyItems,
     ];
 
-    contactController.clear();
     reasonController.clear();
 
     leaveState.value = currentState.copyWith(
@@ -173,9 +214,7 @@ class LeaveViewModel extends GetxController {
       isApplyTabSelected: false,
       selectedSession: AppStrings.fullDay,
       selectedFilter: AppStrings.all,
-      attachmentName: null,
       historyItems: newHistory,
-      contactNumber: '',
       reason: '',
       successMessage: AppStrings.leaveAppliedSuccess,
       fromDate: DateTime.now(),
@@ -203,12 +242,12 @@ class LeaveViewModel extends GetxController {
       return false;
     }
 
-    if (state.contactNumber.trim().isEmpty) {
+    if (state.selectedLeaveType == null) {
       _showSnackbar(
         AppStrings.error,
-        AppStrings.contactRequired,
+        AppStrings.leaveTypeRequired,
         AppColors.error,
-        Icons.phone_rounded,
+        Icons.list_alt_rounded,
       );
       return false;
     }
