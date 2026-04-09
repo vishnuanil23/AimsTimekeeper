@@ -293,34 +293,38 @@ class LeaveView extends GetView<LeaveViewModel> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFD0D4E0)),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<LeaveTypeItem>(
-          value: value,
-          isExpanded: true,
-          hint: Text(
-            isLoading
-                ? AppStrings.loadingLeaveTypes
-                : AppStrings.noLeaveTypesAvailable,
-            style: const TextStyle(
-              fontSize: 14,
+      child: Theme(
+        data: Theme.of(Get.context!).copyWith(canvasColor: AppColors.white),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<LeaveTypeItem>(
+            value: value,
+            isExpanded: true,
+            hint: Text(
+              isLoading
+                  ? AppStrings.loadingLeaveTypes
+                  : AppStrings.noLeaveTypesAvailable,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            icon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
               color: AppColors.textSecondary,
             ),
+            dropdownColor: AppColors.white,
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            items:
+                items
+                    .map(
+                      (item) => DropdownMenuItem<LeaveTypeItem>(
+                        value: item,
+                        child: Text(item.name),
+                      ),
+                    )
+                    .toList(),
+            onChanged: items.isEmpty ? null : onChanged,
           ),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.textSecondary,
-          ),
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-          items:
-              items
-                  .map(
-                    (item) => DropdownMenuItem<LeaveTypeItem>(
-                      value: item,
-                      child: Text(item.name),
-                    ),
-                  )
-                  .toList(),
-          onChanged: items.isEmpty ? null : onChanged,
         ),
       ),
     );

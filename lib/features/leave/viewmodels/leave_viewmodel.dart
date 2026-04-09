@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../core/services/storage_service.dart';
 import '../../../data/repositories/leave_repository.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/strings.dart';
@@ -9,6 +10,7 @@ import '../models/leave_type_model.dart';
 
 class LeaveViewModel extends GetxController {
   final LeaveRepository _leaveRepository = Get.find<LeaveRepository>();
+  final StorageService _storageService = Get.find<StorageService>();
   final reasonController = TextEditingController();
 
   final Rx<LeaveModel> leaveState = LeaveModel().obs;
@@ -190,11 +192,42 @@ class LeaveViewModel extends GetxController {
   Future<void> submitLeaveApplication() async {
     if (!_validateForm()) return;
 
-    leaveState.value = leaveState.value.copyWith(isSubmitting: true);
-
-    await Future.delayed(const Duration(milliseconds: 600));
-
     final currentState = leaveState.value;
+    final user = await _storageService.getUser();
+    final int? employeeId = _resolveEmployeeId(user);
+
+    if (employeeId == null) {
+      _showSnackbar(
+        AppStrings.error,
+        AppStrings.userIdMissing,
+        AppColors.error,
+        Icons.person_off_rounded,
+      );
+      return;
+    }
+
+    leaveState.value = currentState.copyWith(isSubmitting: true);
+
+    final response = await _leaveRepository.applyLeave(
+      employeeId: employeeId,
+      leaveTypeId: currentState.selectedLeaveType!.leaveTypeId,
+      fromDate: _startOfDay(currentState.fromDate),
+      toDate: _endOfDay(currentState.toDate),
+      leaveSessionDuration: _mapSessionDuration(currentState.selectedSession),
+      reason: currentState.reason.trim(),
+    );
+
+    if (!response.success) {
+      leaveState.value = currentState.copyWith(isSubmitting: false);
+      _showSnackbar(
+        AppStrings.error,
+        response.message ?? AppStrings.somethingWentWrong,
+        AppColors.error,
+        Icons.error_outline_rounded,
+      );
+      return;
+    }
+
     final newHistory = [
       LeaveHistoryItem(
         leaveType: currentState.selectedLeaveType!.name,
@@ -227,6 +260,40 @@ class LeaveViewModel extends GetxController {
       AppColors.success,
       Icons.check_circle,
     );
+  }
+
+  DateTime _startOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  int? _resolveEmployeeId(Map<String, dynamic>? user) {
+    if (user == null) return null;
+
+    // Attendance uses stored user["id"] as userId, so leave apply should use
+    // that same value for employeeID to stay aligned with the backend contract.
+    final dynamic rawEmployeeId =
+        user['id'] ?? user['employeeID'] ?? user['employeeId'];
+
+    if (rawEmployeeId is int) return rawEmployeeId;
+    if (rawEmployeeId is num) return rawEmployeeId.toInt();
+    if (rawEmployeeId is String) return int.tryParse(rawEmployeeId);
+
+    return null;
+  }
+
+  DateTime _endOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+  }
+
+  String _mapSessionDuration(String session) {
+    switch (session) {
+      case AppStrings.firstHalf:
+        return 'First Half';
+      case AppStrings.secondHalf:
+        return 'Second Half';
+      default:
+        return 'Full Day';
+    }
   }
 
   bool _validateForm() {
