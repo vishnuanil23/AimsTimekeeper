@@ -9,6 +9,12 @@ class LeaveRepository {
     return _apiHandler.get(AppConstants.leaveTypesEndpoint);
   }
 
+  Future<ApiResponse> getLeaveHistory({required int employeeId}) async {
+    return _apiHandler.get(
+      '${AppConstants.leaveHistoryEndpoint}?employeeId=$employeeId',
+    );
+  }
+
   Future<ApiResponse> applyLeave({
     required int employeeId,
     required int leaveTypeId,

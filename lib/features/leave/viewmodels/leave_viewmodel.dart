@@ -33,6 +33,7 @@ class LeaveViewModel extends GetxController {
     super.onInit();
     _setupListeners();
     _loadLeaveTypes();
+    _loadLeaveHistory();
   }
 
   @override
@@ -98,6 +99,50 @@ class LeaveViewModel extends GetxController {
     }
   }
 
+  Future<void> _loadLeaveHistory() async {
+    final user = await _storageService.getUser();
+    final int? employeeId = _resolveEmployeeId(user);
+
+    if (employeeId == null) {
+      leaveState.value = leaveState.value.copyWith(historyItems: const []);
+      return;
+    }
+
+    leaveState.value = leaveState.value.copyWith(isLoadingHistory: true);
+
+    try {
+      final response = await _leaveRepository.getLeaveHistory(
+        employeeId: employeeId,
+      );
+
+      if (!response.success) {
+        leaveState.value = leaveState.value.copyWith(isLoadingHistory: false);
+        _showSnackbar(
+          AppStrings.error,
+          response.message ?? AppStrings.somethingWentWrong,
+          AppColors.error,
+          Icons.history_toggle_off_rounded,
+        );
+        return;
+      }
+
+      final historyItems = _extractLeaveHistory(response.data);
+
+      leaveState.value = leaveState.value.copyWith(
+        isLoadingHistory: false,
+        historyItems: historyItems,
+      );
+    } catch (_) {
+      leaveState.value = leaveState.value.copyWith(isLoadingHistory: false);
+      _showSnackbar(
+        AppStrings.error,
+        AppStrings.somethingWentWrong,
+        AppColors.error,
+        Icons.history_toggle_off_rounded,
+      );
+    }
+  }
+
   List<LeaveTypeItem> _extractLeaveTypes(dynamic data) {
     dynamic rawList = data;
 
@@ -120,6 +165,26 @@ class LeaveViewModel extends GetxController {
           return null;
         })
         .whereType<LeaveTypeItem>()
+        .toList();
+  }
+
+  List<LeaveHistoryItem> _extractLeaveHistory(dynamic data) {
+    dynamic rawList = data;
+
+    if (rawList is Map<String, dynamic>) {
+      rawList = rawList['data'] ?? rawList['items'] ?? rawList['history'];
+    }
+
+    if (rawList is! List) return [];
+
+    return rawList
+        .map((item) {
+          if (item is Map<String, dynamic>) {
+            return LeaveHistoryItem.fromJson(item);
+          }
+          return null;
+        })
+        .whereType<LeaveHistoryItem>()
         .toList();
   }
 
@@ -228,18 +293,6 @@ class LeaveViewModel extends GetxController {
       return;
     }
 
-    final newHistory = [
-      LeaveHistoryItem(
-        leaveType: currentState.selectedLeaveType!.name,
-        fromDate: currentState.fromDate,
-        toDate: currentState.toDate,
-        status: AppStrings.pending,
-        reason: currentState.reason.trim(),
-        appliedOn: DateTime.now(),
-      ),
-      ...currentState.historyItems,
-    ];
-
     reasonController.clear();
 
     leaveState.value = currentState.copyWith(
@@ -247,7 +300,6 @@ class LeaveViewModel extends GetxController {
       isApplyTabSelected: false,
       selectedSession: AppStrings.fullDay,
       selectedFilter: AppStrings.all,
-      historyItems: newHistory,
       reason: '',
       successMessage: AppStrings.leaveAppliedSuccess,
       fromDate: DateTime.now(),
@@ -260,6 +312,8 @@ class LeaveViewModel extends GetxController {
       AppColors.success,
       Icons.check_circle,
     );
+
+    await _loadLeaveHistory();
   }
 
   DateTime _startOfDay(DateTime date) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/strings.dart';
 import '../models/leave_history_model.dart';
@@ -85,10 +86,6 @@ class LeaveView extends GetView<LeaveViewModel> {
                     ),
                   ],
                 ),
-              ),
-              _buildHeaderCircleButton(
-                icon: Icons.schedule_rounded,
-                onTap: () {},
               ),
             ],
           ),
@@ -534,7 +531,9 @@ class LeaveView extends GetView<LeaveViewModel> {
             ),
           ),
           const SizedBox(height: 14),
-          if (state.filteredHistoryItems.isEmpty)
+          if (state.isLoadingHistory)
+            _buildLoadingHistoryState()
+          else if (state.filteredHistoryItems.isEmpty)
             _buildEmptyHistoryState()
           else
             Column(
@@ -691,6 +690,18 @@ class LeaveView extends GetView<LeaveViewModel> {
     );
   }
 
+  Widget _buildLoadingHistoryState() {
+    return const Column(
+      children: [
+        _HistoryShimmerCard(),
+        SizedBox(height: 10),
+        _HistoryShimmerCard(),
+        SizedBox(height: 10),
+        _HistoryShimmerCard(),
+      ],
+    );
+  }
+
   (Color, Color) _statusColors(String status) {
     switch (status) {
       case AppStrings.approved:
@@ -700,5 +711,96 @@ class LeaveView extends GetView<LeaveViewModel> {
       default:
         return (const Color(0xFFFFF3E8), const Color(0xFFC96A1A));
     }
+  }
+}
+
+class _HistoryShimmerCard extends StatelessWidget {
+  const _HistoryShimmerCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFE8EBF3),
+      highlightColor: const Color(0xFFF8F9FC),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFD8DBE8)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FractionallySizedBox(
+                        widthFactor: 0.42,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Color(0xFFE8EBF3),
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                          ),
+                          child: SizedBox(height: 14),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      FractionallySizedBox(
+                        widthFactor: 0.58,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Color(0xFFE8EBF3),
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                          ),
+                          child: SizedBox(height: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 12),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE8EBF3),
+                    borderRadius: BorderRadius.all(Radius.circular(20)),
+                  ),
+                  child: SizedBox(width: 72, height: 24),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(height: 1, color: const Color(0xFFECEEF4)),
+            const SizedBox(height: 10),
+            const FractionallySizedBox(
+              widthFactor: 0.86,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0xFFE8EBF3),
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                ),
+                child: SizedBox(height: 12),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const FractionallySizedBox(
+              widthFactor: 0.54,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0xFFE8EBF3),
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                ),
+                child: SizedBox(height: 11),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

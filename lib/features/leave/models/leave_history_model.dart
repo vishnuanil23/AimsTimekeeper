@@ -8,6 +8,7 @@ bool _isSameDay(DateTime first, DateTime second) {
 }
 
 class LeaveHistoryItem {
+  final int? leaveApplicationId;
   final String leaveType;
   final DateTime fromDate;
   final DateTime toDate;
@@ -16,6 +17,7 @@ class LeaveHistoryItem {
   final DateTime appliedOn;
 
   const LeaveHistoryItem({
+    this.leaveApplicationId,
     required this.leaveType,
     required this.fromDate,
     required this.toDate,
@@ -23,6 +25,49 @@ class LeaveHistoryItem {
     required this.reason,
     required this.appliedOn,
   });
+
+  factory LeaveHistoryItem.fromJson(Map<String, dynamic> json) {
+    DateTime parseDate(dynamic value, {DateTime? fallback}) {
+      if (value is String && value.isNotEmpty) {
+        final parsed = DateTime.tryParse(value);
+        if (parsed != null) return parsed;
+      }
+      return fallback ?? DateTime.now();
+    }
+
+    final fromDate = parseDate(
+      json['fromDate'] ?? json['startDate'] ?? json['leaveFrom'],
+    );
+    final toDate = parseDate(
+      json['toDate'] ?? json['endDate'] ?? json['leaveTo'],
+      fallback: fromDate,
+    );
+    final appliedOn = parseDate(
+      json['appliedOn'] ?? json['createdAt'] ?? json['applicationDate'],
+      fallback: fromDate,
+    );
+
+    return LeaveHistoryItem(
+      leaveApplicationId:
+          json['leaveApplicationId'] as int? ??
+          json['id'] as int? ??
+          json['leaveId'] as int?,
+      leaveType:
+          (json['leaveTypeName'] ??
+                  json['leaveType'] ??
+                  json['leaveTypeText'] ??
+                  json['name'] ??
+                  '')
+              .toString(),
+      fromDate: fromDate,
+      toDate: toDate,
+      status:
+          (json['status'] ?? json['leaveStatus'] ?? AppStrings.pending)
+              .toString(),
+      reason: (json['reason'] ?? json['remarks'] ?? '').toString(),
+      appliedOn: appliedOn,
+    );
+  }
 
   int get dayCount => toDate.difference(fromDate).inDays + 1;
 

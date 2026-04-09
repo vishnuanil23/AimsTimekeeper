@@ -8,6 +8,7 @@ class AppConstants {
   static const String attendanceStatusEndpoint = '/attendance/status';
   static const String leaveTypesEndpoint = '/leave/types';
   static const String leaveApplyEndpoint = '/leave/apply';
+  static const String leaveHistoryEndpoint = '/leave/history';
 
   // External APIs
   static const String nominatimUrl =

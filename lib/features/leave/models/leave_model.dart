@@ -6,6 +6,7 @@ class LeaveModel {
   final bool isApplyTabSelected;
   final bool isSubmitting;
   final bool isLoadingLeaveTypes;
+  final bool isLoadingHistory;
   final List<LeaveTypeItem> leaveTypes;
   final LeaveTypeItem? selectedLeaveType;
   final DateTime fromDate;
@@ -21,6 +22,7 @@ class LeaveModel {
     this.isApplyTabSelected = true,
     this.isSubmitting = false,
     this.isLoadingLeaveTypes = false,
+    this.isLoadingHistory = false,
     this.leaveTypes = const [],
     this.selectedLeaveType,
     DateTime? fromDate,
@@ -35,12 +37,13 @@ class LeaveModel {
        toDate = _normalizeDate(
          toDate ?? DateTime.now().add(const Duration(days: 1)),
        ),
-       historyItems = historyItems ?? _defaultHistoryItems();
+       historyItems = historyItems ?? const [];
 
   LeaveModel copyWith({
     bool? isApplyTabSelected,
     bool? isSubmitting,
     bool? isLoadingLeaveTypes,
+    bool? isLoadingHistory,
     List<LeaveTypeItem>? leaveTypes,
     LeaveTypeItem? selectedLeaveType,
     DateTime? fromDate,
@@ -56,6 +59,7 @@ class LeaveModel {
       isApplyTabSelected: isApplyTabSelected ?? this.isApplyTabSelected,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       isLoadingLeaveTypes: isLoadingLeaveTypes ?? this.isLoadingLeaveTypes,
+      isLoadingHistory: isLoadingHistory ?? this.isLoadingHistory,
       leaveTypes: leaveTypes ?? this.leaveTypes,
       selectedLeaveType: selectedLeaveType ?? this.selectedLeaveType,
       fromDate: fromDate ?? this.fromDate,
@@ -84,42 +88,5 @@ class LeaveModel {
     if (selectedFilter == AppStrings.all) return historyItems;
 
     return historyItems.where((item) => item.status == selectedFilter).toList();
-  }
-
-  static List<LeaveHistoryItem> _defaultHistoryItems() {
-    return [
-      LeaveHistoryItem(
-        leaveType: 'Annual Leave',
-        fromDate: DateTime(2026, 4, 10),
-        toDate: DateTime(2026, 4, 11),
-        status: AppStrings.pending,
-        reason: 'Family function',
-        appliedOn: DateTime(2026, 4, 9),
-      ),
-      LeaveHistoryItem(
-        leaveType: 'Sick Leave',
-        fromDate: DateTime(2026, 3, 20),
-        toDate: DateTime(2026, 3, 21),
-        status: AppStrings.approved,
-        reason: 'Fever and cold',
-        appliedOn: DateTime(2026, 3, 19),
-      ),
-      LeaveHistoryItem(
-        leaveType: 'Casual Leave',
-        fromDate: DateTime(2026, 2, 14),
-        toDate: DateTime(2026, 2, 14),
-        status: AppStrings.rejected,
-        reason: 'Personal work',
-        appliedOn: DateTime(2026, 2, 12),
-      ),
-      LeaveHistoryItem(
-        leaveType: 'Annual Leave',
-        fromDate: DateTime(2026, 1, 26),
-        toDate: DateTime(2026, 1, 28),
-        status: AppStrings.approved,
-        reason: 'Republic Day holidays',
-        appliedOn: DateTime(2026, 1, 20),
-      ),
-    ];
   }
 }

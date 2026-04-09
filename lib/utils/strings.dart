@@ -125,4 +125,5 @@ class AppStrings {
   static const String leaveTypeRequired = 'Leave type is required';
   static const String loadingLeaveTypes = 'Loading leave types...';
   static const String noLeaveTypesAvailable = 'No leave types available';
+  static const String loadingLeaveHistory = 'Loading leave history...';
 }
