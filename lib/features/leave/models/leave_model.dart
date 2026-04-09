@@ -76,12 +76,32 @@ class LeaveModel {
   static DateTime _normalizeDate(DateTime date) =>
       DateTime(date.year, date.month, date.day);
 
-  int get totalDays => toDate.difference(fromDate).inDays + 1;
+  int get totalDays {
+    final difference = toDate.difference(fromDate).inDays;
+    return difference <= 0 ? 1 : difference;
+  }
+
+  double get durationInDays {
+    if (selectedSession == AppStrings.fullDay) {
+      return totalDays.toDouble();
+    }
+
+    if (totalDays == 1) {
+      return 0.5;
+    }
+
+    return totalDays - 0.5;
+  }
 
   String get durationText {
+    final isWholeDay = durationInDays == durationInDays.truncateToDouble();
+    final numericText =
+        isWholeDay
+            ? durationInDays.toInt().toString()
+            : durationInDays.toStringAsFixed(1);
     final suffix =
-        totalDays == 1 ? AppStrings.daySuffix : AppStrings.daysSuffix;
-    return '$totalDays $suffix';
+        durationInDays == 1 ? AppStrings.daySuffix : AppStrings.daysSuffix;
+    return '$numericText $suffix';
   }
 
   List<LeaveHistoryItem> get filteredHistoryItems {
