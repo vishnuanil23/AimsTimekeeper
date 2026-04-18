@@ -330,16 +330,13 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
         await _locationRepo.getAreaFromCoordinates(lat, lng) ??
         "Unknown Location";
 
-    // DO NOT save to cache or update UI yet - wait for successful punch
+    // Show the freshly resolved location while the punch request is pending.
+    // Persist it only after a successful punch-in.
     homeState.update((s) {
       if (s == null) return;
       s.isFetchingLocation = false;
-      // Update UI with fresh location
       s.locationText = locationText;
     });
-
-    // Save to cache for app display persistence
-    await _storage.saveCachedLocation(locationText);
 
     // Get user
     final user = await _storage.getUser();
