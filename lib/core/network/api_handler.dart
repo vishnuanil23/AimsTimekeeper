@@ -1,20 +1,11 @@
 import 'dart:convert';
-import 'package:aims_timekeeper/core/services/storage_service.dart';
 import 'package:http/http.dart' as http;
-import 'package:get/get.dart';
 import '../../utils/constants.dart';
 import '../../utils/strings.dart';
 
 class ApiHandler {
-  final StorageService _storageService = Get.find<StorageService>();
-
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _storageService.getToken();
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
   }
 
   Future<ApiResponse> get(String endpoint) async {

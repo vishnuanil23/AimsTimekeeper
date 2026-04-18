@@ -44,10 +44,15 @@ class AttendanceRepository {
   }
 
   /// Get attendance status
-  Future<ApiResponse> getAttendanceStatus() async {
+  Future<ApiResponse> getAttendanceStatus({int? userId}) async {
     print('AttendanceRepository: Get attendance status');
 
-    return await _apiHandler.get(AppConstants.attendanceStatusEndpoint);
+    final endpoint =
+        userId == null
+            ? AppConstants.attendanceStatusEndpoint
+            : '${AppConstants.attendanceStatusEndpoint}?userId=$userId';
+
+    return await _apiHandler.get(endpoint);
   }
 
   /// Parse attendance from API response

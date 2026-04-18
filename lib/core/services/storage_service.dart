@@ -9,16 +9,12 @@ class StorageService {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  Future<void> saveToken(String token) async {
-    await _prefs.setString(AppConstants.tokenKey, token);
-  }
-
-  Future<String?> getToken() async {
-    return _prefs.getString(AppConstants.tokenKey);
-  }
-
   Future<void> saveUser(Map<String, dynamic> user) async {
     await _prefs.setString(AppConstants.userKey, jsonEncode(user));
+  }
+
+  Future<void> saveLoginStatus(bool isLoggedIn) async {
+    await _prefs.setBool(AppConstants.isLoggedInKey, isLoggedIn);
   }
 
   Future<Map<String, dynamic>?> getUser() async {
@@ -70,7 +66,6 @@ class StorageService {
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await getToken();
-    return token != null;
+    return _prefs.getBool(AppConstants.isLoggedInKey) ?? false;
   }
 }
