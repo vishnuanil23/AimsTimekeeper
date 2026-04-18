@@ -5,6 +5,7 @@ import 'package:aims_timekeeper/data/repositories/location_repository.dart';
 import 'package:aims_timekeeper/utils/colors.dart';
 import 'package:aims_timekeeper/core/services/location_service.dart';
 import 'package:aims_timekeeper/utils/strings.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 
@@ -110,22 +111,55 @@ class HomeState {
   }
 }
 
-class HomeViewModel extends GetxController {
+class HomeViewModel extends GetxController with WidgetsBindingObserver {
   final AttendanceRepository _attendanceRepo = Get.put(AttendanceRepository());
   final LocationRepository _locationRepo = Get.put(LocationRepository());
   final StorageService _storage = Get.find<StorageService>();
   final Rx<HomeState> homeState = HomeState().obs;
+  bool _isClockRunning = false;
 
   @override
   void onInit() {
     super.onInit();
-    _loadUserDetails();
+    WidgetsBinding.instance.addObserver(this);
+    _loadInitialData();
     _startClock();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        syncAttendanceStatusFromServer();
+        _startClock();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      default:
+        _persistCurrentAttendanceState();
+        _isClockRunning = false;
+        break;
+    }
+  }
+
+  @override
+  void onClose() {
+    _isClockRunning = false;
+    WidgetsBinding.instance.removeObserver(this);
+    _persistCurrentAttendanceState();
+    super.onClose();
+  }
+
+  Future<void> _loadInitialData() async {
+    await _loadUserDetails();
+    await syncAttendanceStatusFromServer();
   }
 
   /// Load stored user email + firstName
   Future<void> _loadUserDetails() async {
     final user = await _storage.getUser();
+    final isPunchedIn = await _storage.getPunchStatus();
 
     if (user == null) return;
 
@@ -137,11 +171,71 @@ class HomeViewModel extends GetxController {
       if (s.userName.isEmpty) s.userName = "User";
 
       s.attendanceId = user["attendanceId"];
-      s.isPunchedIn = user["isLoggedIn"] ?? false;
+      s.isPunchedIn =
+          isPunchedIn ||
+          (_readBool(user["isPunchedIn"]) ??
+              _readBool(user["isLoggedIn"]) ??
+              false);
+      s.lastPunchInTime = _parseDateTime(
+        user["lastPunchInTime"] ?? user["lastPunchTime"],
+      );
+      s.lastPunchOutTime = _parseDateTime(user["lastPunchOutTime"]);
 
       // Load cached location if exists
       s.locationText = _storage.getCachedLocation();
     });
+  }
+
+  Future<void> syncAttendanceStatusFromServer() async {
+    final user = await _storage.getUser();
+    final userId = _readInt(user?["id"]);
+
+    if (user == null || userId == null) return;
+
+    try {
+      final response = await _attendanceRepo.getAttendanceStatus(
+        userId: userId,
+      );
+
+      if (!response.success) return;
+
+      final data = _responseData(response.data);
+      if (data == null) return;
+
+      final isPunchedIn =
+          _readBool(data["isPunchedIn"]) ??
+          _readBool(data["isLoggedIn"]) ??
+          _readBool(data["isCheckedIn"]) ??
+          _readBool(data["active"]) ??
+          _readStatus(data["status"]) ??
+          false;
+      final attendanceId = _readInt(data["attendanceId"]);
+      final lastPunchInTime = _parseDateTime(
+        data["lastPunchInTime"] ?? data["lastPunchTime"],
+      );
+      final lastPunchOutTime = _parseDateTime(data["lastPunchOutTime"]);
+
+      await _saveAttendanceFallback(
+        user: user,
+        isPunchedIn: isPunchedIn,
+        attendanceId: attendanceId,
+        lastPunchInTime: lastPunchInTime,
+        lastPunchOutTime: lastPunchOutTime,
+      );
+
+      if (!isPunchedIn) {
+        await _storage.clearCachedLocation();
+      }
+
+      homeState.update((s) {
+        if (s == null) return;
+        s.isPunchedIn = isPunchedIn;
+        s.attendanceId = attendanceId;
+        s.lastPunchInTime = lastPunchInTime;
+        s.lastPunchOutTime = lastPunchOutTime;
+        if (!isPunchedIn) s.locationText = null;
+      });
+    } catch (_) {}
   }
 
   /// Header name getter used in UI
@@ -149,8 +243,13 @@ class HomeViewModel extends GetxController {
 
   /// Live time updater every second
   void _startClock() {
+    if (_isClockRunning) return;
+
+    _isClockRunning = true;
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 1));
+
+      if (!_isClockRunning || isClosed) return false;
 
       final now = DateTime.now();
 
@@ -160,7 +259,7 @@ class HomeViewModel extends GetxController {
         s.currentDate = HomeState._formatDate(now);
       });
 
-      return true;
+      return _isClockRunning && !isClosed;
     });
   }
 
@@ -171,12 +270,14 @@ class HomeViewModel extends GetxController {
       s.isLoading = true;
     });
 
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    homeState.update((s) {
-      if (s == null) return;
-      s.isLoading = false;
-    });
+    try {
+      await syncAttendanceStatusFromServer();
+    } finally {
+      homeState.update((s) {
+        if (s == null) return;
+        s.isLoading = false;
+      });
+    }
   }
 
   /// Punch In / Punch Out
@@ -242,9 +343,9 @@ class HomeViewModel extends GetxController {
 
     // Get user
     final user = await _storage.getUser();
-    final int? userId = user?["id"];
+    final userId = _readInt(user?["id"]);
 
-    if (userId == null) {
+    if (user == null || userId == null) {
       _showError(AppStrings.userIdMissing);
       homeState.update((s) => s?.isLoading = false);
       return;
@@ -272,6 +373,13 @@ class HomeViewModel extends GetxController {
 
         // SUCCESS: Now update UI and cache
         await _storage.saveCachedLocation(locationText);
+        await _saveAttendanceFallback(
+          user: user,
+          isPunchedIn: true,
+          attendanceId: _readInt(data["attendanceId"]),
+          lastPunchInTime: dt,
+          lastPunchOutTime: null,
+        );
 
         homeState.update((s) {
           if (s == null) return;
@@ -319,10 +427,22 @@ class HomeViewModel extends GetxController {
 
       final data = response.data["data"];
       final dt = DateTime.parse(data["lastPunchOutTime"]);
+      final user = await _storage.getUser();
+
+      if (user != null) {
+        await _saveAttendanceFallback(
+          user: user,
+          isPunchedIn: false,
+          attendanceId: null,
+          lastPunchInTime: homeState.value.lastPunchInTime,
+          lastPunchOutTime: dt,
+        );
+      }
 
       homeState.update((s) {
         if (s == null) return;
         s.isPunchedIn = false;
+        s.attendanceId = null;
         s.lastPunchOutTime = dt;
         s.locationText = null; // Clear from state
         s.isLoading = false;
@@ -376,5 +496,94 @@ class HomeViewModel extends GetxController {
       backgroundColor: AppColors.success,
       colorText: AppColors.white,
     );
+  }
+
+  Map<String, dynamic>? _responseData(dynamic responseData) {
+    if (responseData is! Map) return null;
+
+    final data = responseData["data"];
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+
+    return Map<String, dynamic>.from(responseData);
+  }
+
+  Future<void> _saveAttendanceFallback({
+    required Map<String, dynamic> user,
+    required bool isPunchedIn,
+    required int? attendanceId,
+    required DateTime? lastPunchInTime,
+    required DateTime? lastPunchOutTime,
+  }) async {
+    user["isPunchedIn"] = isPunchedIn;
+    user.remove("isLoggedIn");
+    user["attendanceId"] = attendanceId;
+    user["lastPunchInTime"] = lastPunchInTime?.toIso8601String();
+    user["lastPunchTime"] = lastPunchInTime?.toIso8601String();
+    user["lastPunchOutTime"] = lastPunchOutTime?.toIso8601String();
+
+    await _storage.saveUser(user);
+    await _storage.savePunchStatus(isPunchedIn);
+  }
+
+  Future<void> _persistCurrentAttendanceState() async {
+    final user = await _storage.getUser();
+    if (user == null) return;
+
+    final state = homeState.value;
+    await _saveAttendanceFallback(
+      user: user,
+      isPunchedIn: state.isPunchedIn,
+      attendanceId: state.attendanceId,
+      lastPunchInTime: state.lastPunchInTime,
+      lastPunchOutTime: state.lastPunchOutTime,
+    );
+  }
+
+  bool? _readBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == "true" || normalized == "1") return true;
+      if (normalized == "false" || normalized == "0") return false;
+    }
+    return null;
+  }
+
+  bool? _readStatus(dynamic value) {
+    if (value is! String) return null;
+
+    final normalized = value.trim().toLowerCase();
+    if (normalized == "in" ||
+        normalized == "punch_in" ||
+        normalized == "punched_in" ||
+        normalized == "checked_in" ||
+        normalized == "active") {
+      return true;
+    }
+    if (normalized == "out" ||
+        normalized == "punch_out" ||
+        normalized == "punched_out" ||
+        normalized == "checked_out" ||
+        normalized == "inactive") {
+      return false;
+    }
+    return null;
+  }
+
+  int? _readInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String && value.trim().isNotEmpty) {
+      return DateTime.tryParse(value);
+    }
+    return null;
   }
 }

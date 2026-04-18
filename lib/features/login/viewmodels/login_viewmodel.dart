@@ -131,11 +131,7 @@ class LoginViewModel extends GetxController {
       final hrmsUser = _authRepository.parseUser(userData);
       // Save user as JSON map
       await _storageService.saveUser(hrmsUser.toJson());
-
-      // Save dummy token to satisfy your ApiHandler header flow
-      await _storageService.saveToken(
-        "temp_token_${DateTime.now().millisecondsSinceEpoch}",
-      );
+      await _storageService.saveLoginStatus(true);
       if (loginState.value.rememberMe) {
         await _storageService.saveRememberedEmail(emailController.text.trim());
       } else {
@@ -210,16 +206,12 @@ class LoginViewModel extends GetxController {
       // Parse user model from response
       final user = _authRepository.parseUser(data['user']);
 
-      // Save token to local storage
-      await _storageService.saveToken(data['token']);
-
-      print('LoginViewModel: Token saved');
-
       await _storageService.clear();
       await _storageService.clear();
 
       // Save user data to local storage
       await _storageService.saveUser(user.toJson());
+      await _storageService.saveLoginStatus(true);
       print('LoginViewModel: User data saved');
 
       // Update state with success message
