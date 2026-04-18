@@ -17,6 +17,7 @@ class HomeView extends GetView<HomeViewModel> {
       appBar: _buildAppBar(context),
       body: RefreshIndicator(
         onRefresh: controller.refreshData,
+        notificationPredicate: (_) => !controller.isOperationInProgress,
         color: AppColors.primary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -61,11 +62,22 @@ class HomeView extends GetView<HomeViewModel> {
         ),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh, color: AppColors.white),
-          onPressed: controller.refreshData,
-          tooltip: AppStrings.refresh,
-        ),
+        Obx(() {
+          controller.homeState.value;
+          final isOperationInProgress = controller.isOperationInProgress;
+
+          return IconButton(
+            icon: Icon(
+              Icons.refresh,
+              color:
+                  isOperationInProgress
+                      ? AppColors.white.withValues(alpha: 0.45)
+                      : AppColors.white,
+            ),
+            onPressed: isOperationInProgress ? null : controller.refreshData,
+            tooltip: AppStrings.refresh,
+          );
+        }),
         IconButton(
           icon: const Icon(Icons.logout, color: AppColors.white),
           onPressed: () {
@@ -146,7 +158,7 @@ class HomeView extends GetView<HomeViewModel> {
               const SizedBox(width: 8),
               Obx(
                 () => Text(
-                  controller.homeState.value.currentTime,
+                  controller.currentTime.value,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -167,7 +179,7 @@ class HomeView extends GetView<HomeViewModel> {
               const SizedBox(width: 8),
               Obx(
                 () => Text(
-                  controller.homeState.value.currentDate,
+                  controller.currentDate.value,
                   style: const TextStyle(fontSize: 14, color: AppColors.white),
                 ),
               ),
@@ -277,31 +289,33 @@ class HomeView extends GetView<HomeViewModel> {
   }
 
   Widget _buildStatsRow() {
-    return Obx(() {
-      final state = controller.homeState.value;
-
-      return Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
+    return Row(
+      children: [
+        Expanded(
+          child: Obx(
+            () => _buildStatCard(
               icon: Icons.timer_outlined,
               title: AppStrings.workDuration,
-              value: state.formattedWorkDuration,
+              value: controller.workDuration.value,
               color: AppColors.info,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildStatCard(
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Obx(() {
+            final state = controller.homeState.value;
+
+            return _buildStatCard(
               icon: Icons.event_available,
               title: AppStrings.currentStatus,
               value: state.statusText,
               color: state.isPunchedIn ? AppColors.success : AppColors.error,
-            ),
-          ),
-        ],
-      );
-    });
+            );
+          }),
+        ),
+      ],
+    );
   }
 
   Widget _buildApplyLeaveCard(BuildContext context) {
