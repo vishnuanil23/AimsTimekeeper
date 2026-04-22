@@ -408,35 +408,44 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
           location: locationText,
         );
 
-        if (!response.success) {
+      if (!response.success) {
           _showError(response.message ?? AppStrings.punchInFailed);
           // Location fetched but discarded on failure
           return;
         }
 
         final data = response.data["data"];
-        final dt = DateTime.parse(data["lastPunchTime"]);
+        final isPunchedIn = _readBool(data["isPunchedIn"]) ?? true;
+        final responseAttendanceId = _readInt(data["attendanceId"]);
+        final dt = _parseDateTime(
+          data["lastPunchInTime"] ?? data["lastPunchTime"],
+        );
+
+        if (dt == null) {
+          _showError(AppStrings.invalidServerResponse);
+          return;
+        }
 
         // SUCCESS: Now update UI and cache
         await _storage.saveCachedLocation(locationText);
         await _saveAttendanceFallback(
           user: user,
-          isPunchedIn: true,
-          attendanceId: _readInt(data["attendanceId"]),
+          isPunchedIn: isPunchedIn,
+          attendanceId: responseAttendanceId,
           lastPunchInTime: dt,
           lastPunchOutTime: null,
         );
 
         homeState.update((s) {
           if (s == null) return;
-          s.isPunchedIn = true;
+          s.isPunchedIn = isPunchedIn;
           s.lastPunchInTime = dt;
           s.lastPunchOutTime = null;
-          s.attendanceId = data["attendanceId"];
+          s.attendanceId = responseAttendanceId;
           s.locationText = locationText;
         });
-        _workDurationStartedAt = DateTime.now();
-        _lastSuccessfulLocalPunchInAt = DateTime.now();
+        _workDurationStartedAt = isPunchedIn ? DateTime.now() : null;
+        _lastSuccessfulLocalPunchInAt = isPunchedIn ? DateTime.now() : null;
         _refreshClockValues();
 
         _showSuccess(AppStrings.punchInRecorded);
@@ -466,14 +475,22 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
       }
 
       final data = response.data["data"];
-      final dt = DateTime.parse(data["lastPunchOutTime"]);
+      final isPunchedIn = _readBool(data["isPunchedIn"]) ?? false;
+      final responseAttendanceId = _readInt(data["attendanceId"]);
+      final dt = _parseDateTime(data["lastPunchOutTime"]);
+
+      if (dt == null) {
+        _showError(AppStrings.invalidServerResponse);
+        return;
+      }
+
       final latestUser = await _storage.getUser();
 
       if (latestUser != null) {
         await _saveAttendanceFallback(
           user: latestUser,
-          isPunchedIn: false,
-          attendanceId: null,
+          isPunchedIn: isPunchedIn,
+          attendanceId: isPunchedIn ? responseAttendanceId : null,
           lastPunchInTime: homeState.value.lastPunchInTime,
           lastPunchOutTime: dt,
         );
@@ -481,13 +498,13 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
 
       homeState.update((s) {
         if (s == null) return;
-        s.isPunchedIn = false;
-        s.attendanceId = null;
+        s.isPunchedIn = isPunchedIn;
+        s.attendanceId = isPunchedIn ? responseAttendanceId : null;
         s.lastPunchOutTime = dt;
-        s.locationText = null; // Clear from state
+        if (!isPunchedIn) s.locationText = null; // Clear from state
       });
-      _workDurationStartedAt = null;
-      _lastSuccessfulLocalPunchInAt = null;
+      _workDurationStartedAt = isPunchedIn ? homeState.value.lastPunchInTime : null;
+      _lastSuccessfulLocalPunchInAt = isPunchedIn ? DateTime.now() : null;
       _refreshClockValues();
 
       await _storage.clearCachedLocation(); // Clear from storage
@@ -509,7 +526,7 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
   Future<void> logout() async {
     final rememberedEmail = await _storage.getRememberedEmail();
 
-    await _storage.clearAll();
+    await _storage.clearSessionData();
 
     if (rememberedEmail != null) {
       await _storage.saveRememberedEmail(rememberedEmail);

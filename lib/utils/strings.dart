@@ -116,6 +116,11 @@ class AppStrings {
   static const String cancel = 'Cancel';
   static const String yes = 'Yes';
   static const String logoutConfirmation = 'Are you sure you want to logout?';
+  static const String confirmPunchOutTitle = 'Punch Out';
+  static const String confirmPunchOutMessage =
+      'Are you sure you want to punch out?';
+  static const String confirmPunchOutButton = 'Punch Out';
+  static const String totalLoggedInFor = 'Total time';
   static const String leaveFeatureComingSoon =
       'Leave application will be added soon';
   static const String leaveAppliedSuccess = 'Leave application submitted';

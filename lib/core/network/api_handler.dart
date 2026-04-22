@@ -9,16 +9,30 @@ class ApiHandler {
   }
 
   Future<ApiResponse> get(String endpoint) async {
+    final url = '${AppConstants.baseUrl}$endpoint';
+    final headers = await _getHeaders();
+
     try {
+//       print("\n===================== API REQUEST =====================");
+//       print("GET: $url");
+//       print("HEADERS: $headers");
+//       print("=======================================================\n");
+
       final response = await http
-          .get(
-            Uri.parse('${AppConstants.baseUrl}$endpoint'),
-            headers: await _getHeaders(),
-          )
+          .get(Uri.parse(url), headers: headers)
           .timeout(const Duration(seconds: AppConstants.connectionTimeout));
+
+//       print("\n==================== API RESPONSE =====================");
+//       print("STATUS CODE: ${response.statusCode}");
+//       print("BODY: ${response.body}");
+//       print("=======================================================\n");
 
       return _handleResponse(response);
     } catch (e) {
+//       print("\n==================== API ERROR ========================");
+//       print("ERROR: $e");
+//       print("=======================================================\n");
+
       return ApiResponse(
         success: false,
         message: AppStrings.somethingWentWrong,
@@ -32,26 +46,26 @@ class ApiHandler {
     final headers = await _getHeaders();
 
     try {
-      print("\n===================== API REQUEST =====================");
-      print("POST: $url");
-      print("HEADERS: $headers");
-      print("BODY: $data");
-      print("=======================================================\n");
+//       print("\n===================== API REQUEST =====================");
+//       print("POST: $url");
+//       print("HEADERS: $headers");
+//       print("BODY: $data");
+//       print("=======================================================\n");
 
       final response = await http
           .post(Uri.parse(url), headers: headers, body: jsonEncode(data))
           .timeout(const Duration(seconds: AppConstants.connectionTimeout));
 
-      print("\n==================== API RESPONSE =====================");
-      print("STATUS CODE: ${response.statusCode}");
-      print("BODY: ${response.body}");
-      print("=======================================================\n");
+//       print("\n==================== API RESPONSE =====================");
+//       print("STATUS CODE: ${response.statusCode}");
+//       print("BODY: ${response.body}");
+//       print("=======================================================\n");
 
       return _handleResponse(response);
     } catch (e) {
-      print("\n==================== API ERROR ========================");
-      print("ERROR: $e");
-      print("=======================================================\n");
+//       print("\n==================== API ERROR ========================");
+//       print("ERROR: $e");
+//       print("=======================================================\n");
 
       return ApiResponse(
         success: false,
