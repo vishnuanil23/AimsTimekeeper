@@ -17,6 +17,7 @@ class HomeView extends GetView<HomeViewModel> {
       appBar: _buildAppBar(context),
       body: RefreshIndicator(
         onRefresh: controller.refreshData,
+        notificationPredicate: (_) => !controller.isOperationInProgress,
         color: AppColors.primary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -61,22 +62,8 @@ class HomeView extends GetView<HomeViewModel> {
         ),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh, color: AppColors.white),
-          onPressed: controller.refreshData,
-          tooltip: AppStrings.refresh,
-        ),
-        IconButton(
-          icon: const Icon(Icons.logout, color: AppColors.white),
-          onPressed: () {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => LogoutDialog(onConfirm: controller.logout),
-            );
-          },
-          tooltip: AppStrings.logout,
-        ),
+        _RefreshActionButton(controller: controller),
+        _LogoutActionButton(controller: controller),
       ],
     );
   }
@@ -146,7 +133,7 @@ class HomeView extends GetView<HomeViewModel> {
               const SizedBox(width: 8),
               Obx(
                 () => Text(
-                  controller.homeState.value.currentTime,
+                  controller.currentTime.value,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -167,7 +154,7 @@ class HomeView extends GetView<HomeViewModel> {
               const SizedBox(width: 8),
               Obx(
                 () => Text(
-                  controller.homeState.value.currentDate,
+                  controller.currentDate.value,
                   style: const TextStyle(fontSize: 14, color: AppColors.white),
                 ),
               ),
@@ -277,31 +264,33 @@ class HomeView extends GetView<HomeViewModel> {
   }
 
   Widget _buildStatsRow() {
-    return Obx(() {
-      final state = controller.homeState.value;
-
-      return Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
+    return Row(
+      children: [
+        Expanded(
+          child: Obx(
+            () => _buildStatCard(
               icon: Icons.timer_outlined,
               title: AppStrings.workDuration,
-              value: state.formattedWorkDuration,
+              value: controller.workDuration.value,
               color: AppColors.info,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildStatCard(
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Obx(() {
+            final state = controller.homeState.value;
+
+            return _buildStatCard(
               icon: Icons.event_available,
               title: AppStrings.currentStatus,
               value: state.statusText,
               color: state.isPunchedIn ? AppColors.success : AppColors.error,
-            ),
-          ),
-        ],
-      );
-    });
+            );
+          }),
+        ),
+      ],
+    );
   }
 
   Widget _buildApplyLeaveCard(BuildContext context) {
@@ -491,6 +480,148 @@ class HomeView extends GetView<HomeViewModel> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RefreshActionButton extends StatefulWidget {
+  final HomeViewModel controller;
+
+  const _RefreshActionButton({required this.controller});
+
+  @override
+  State<_RefreshActionButton> createState() => _RefreshActionButtonState();
+}
+
+class _RefreshActionButtonState extends State<_RefreshActionButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleRefresh() async {
+    if (widget.controller.isOperationInProgress) return;
+
+    await _animationController.forward(from: 0);
+    await widget.controller.refreshData();
+
+    if (mounted) {
+      await _animationController.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      widget.controller.homeState.value;
+      final isOperationInProgress = widget.controller.isOperationInProgress;
+      final iconColor =
+          isOperationInProgress
+              ? AppColors.white.withValues(alpha: 0.45)
+              : AppColors.white;
+
+      return AnimatedBuilder(
+        animation: _animationController,
+        builder: (context, child) {
+          final rotation = _animationController.value * 0.35;
+          final scale = 1 - (_animationController.value * 0.08);
+
+          return Transform.scale(
+            scale: scale,
+            child: Transform.rotate(
+              angle: rotation,
+              child: child,
+            ),
+          );
+        },
+        child: IconButton(
+          icon: Icon(Icons.refresh, color: iconColor),
+          onPressed: isOperationInProgress ? null : _handleRefresh,
+          tooltip: AppStrings.refresh,
+        ),
+      );
+    });
+  }
+}
+
+class _LogoutActionButton extends StatefulWidget {
+  final HomeViewModel controller;
+
+  const _LogoutActionButton({required this.controller});
+
+  @override
+  State<_LogoutActionButton> createState() => _LogoutActionButtonState();
+}
+
+class _LogoutActionButtonState extends State<_LogoutActionButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogoutTap() async {
+    await _animationController.forward(from: 0);
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => LogoutDialog(onConfirm: widget.controller.logout),
+    );
+
+    if (mounted) {
+      await _animationController.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        final rotation = -(_animationController.value * 0.18);
+        final scale = 1 - (_animationController.value * 0.08);
+
+        return Transform.scale(
+          scale: scale,
+          child: Transform.rotate(
+            angle: rotation,
+            child: child,
+          ),
+        );
+      },
+      child: IconButton(
+        icon: const Icon(Icons.logout, color: AppColors.white),
+        onPressed: _handleLogoutTap,
+        tooltip: AppStrings.logout,
       ),
     );
   }

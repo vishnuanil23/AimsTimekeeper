@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../utils/colors.dart';
 import '../../../../utils/strings.dart';
+import 'punch_out_dialog.dart';
 import '../viewmodels/home_viewmodel.dart';
 
 class PunchButton extends StatefulWidget {
@@ -97,7 +98,25 @@ class _PunchButtonState extends State<PunchButton>
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: isProcessing ? null : widget.controller.togglePunch,
+                  onTap:
+                      isProcessing
+                          ? null
+                          : () {
+                            if (!state.isPunchedIn) {
+                              widget.controller.togglePunch();
+                              return;
+                            }
+
+                            showDialog<void>(
+                              context: context,
+                              builder:
+                                  (context) => PunchOutDialog(
+                                    onConfirm: widget.controller.togglePunch,
+                                    loggedDuration:
+                                        widget.controller.workDuration.value,
+                                  ),
+                            );
+                          },
                   borderRadius: BorderRadius.circular(30),
                   child: Center(
                     child:

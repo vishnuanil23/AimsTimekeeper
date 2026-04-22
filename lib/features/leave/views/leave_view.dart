@@ -22,14 +22,14 @@ class LeaveView extends GetView<LeaveViewModel> {
             child: Container(
               color: const Color(0xFFE8EAF0),
               child: Obx(
-                () => SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
-                  child:
-                      controller.leaveState.value.isApplyTabSelected
-                          ? _buildApplyPanel(context)
-                          : _buildHistoryPanel(),
-                ),
+                () =>
+                    controller.leaveState.value.isApplyTabSelected
+                        ? SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+                          child: _buildApplyPanel(context),
+                        )
+                        : _buildHistoryPanel(),
               ),
             ),
           ),
@@ -512,36 +512,51 @@ class LeaveView extends GetView<LeaveViewModel> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children:
-                  controller.filterOptions
-                      .map(
-                        (filter) => Padding(
-                          padding: const EdgeInsets.only(right: 7),
-                          child: _buildFilterChip(
-                            label: filter,
-                            isSelected: state.selectedFilter == filter,
-                            onTap: () => controller.selectFilter(filter),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children:
+                    controller.filterOptions
+                        .map(
+                          (filter) => Padding(
+                            padding: const EdgeInsets.only(right: 7),
+                            child: _buildFilterChip(
+                              label: filter,
+                              isSelected: state.selectedFilter == filter,
+                              onTap: () => controller.selectFilter(filter),
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                        )
+                        .toList(),
+              ),
             ),
           ),
           const SizedBox(height: 14),
-          if (state.isLoadingHistory)
-            _buildLoadingHistoryState()
-          else if (state.filteredHistoryItems.isEmpty)
-            _buildEmptyHistoryState()
-          else
-            Column(
-              children:
-                  state.filteredHistoryItems
-                      .map((item) => _buildHistoryCard(item))
-                      .toList(),
-            ),
+          Expanded(
+            child:
+                state.isLoadingHistory
+                    ? Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                      child: _buildLoadingHistoryState(),
+                    )
+                    : state.filteredHistoryItems.isEmpty
+                    ? Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                      child: _buildEmptyHistoryState(),
+                    )
+                    : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                      itemCount: state.filteredHistoryItems.length,
+                      itemBuilder: (context, index) {
+                        return _buildHistoryCard(
+                          state.filteredHistoryItems[index],
+                        );
+                      },
+                    ),
+          ),
         ],
       );
     });

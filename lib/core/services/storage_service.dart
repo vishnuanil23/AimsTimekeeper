@@ -57,6 +57,13 @@ class StorageService {
     await _prefs.remove("cached_location");
   }
 
+  Future<void> clearSessionData() async {
+    await _prefs.remove(AppConstants.userKey);
+    await _prefs.remove(AppConstants.isLoggedInKey);
+    await _prefs.remove(AppConstants.isPunchedInKey);
+    await _prefs.remove("cached_location");
+  }
+
   Future<void> clear() async {
     await _prefs.clear();
   }

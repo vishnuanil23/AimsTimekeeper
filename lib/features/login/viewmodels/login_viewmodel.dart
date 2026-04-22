@@ -132,6 +132,7 @@ class LoginViewModel extends GetxController {
       // Save user as JSON map
       await _storageService.saveUser(hrmsUser.toJson());
       await _storageService.saveLoginStatus(true);
+      await _storageService.savePunchStatus(hrmsUser.isPunchedIn);
       if (loginState.value.rememberMe) {
         await _storageService.saveRememberedEmail(emailController.text.trim());
       } else {
@@ -212,6 +213,7 @@ class LoginViewModel extends GetxController {
       // Save user data to local storage
       await _storageService.saveUser(user.toJson());
       await _storageService.saveLoginStatus(true);
+      await _storageService.savePunchStatus(user.isPunchedIn);
       print('LoginViewModel: User data saved');
 
       // Update state with success message

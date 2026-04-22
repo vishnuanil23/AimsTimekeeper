@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import '../../../../utils/colors.dart';
 import '../../../../utils/strings.dart';
 
-class LogoutDialog extends StatelessWidget {
+class PunchOutDialog extends StatelessWidget {
   final VoidCallback onConfirm;
+  final String loggedDuration;
 
-  const LogoutDialog({Key? key, required this.onConfirm}) : super(key: key);
+  const PunchOutDialog({
+    Key? key,
+    required this.onConfirm,
+    required this.loggedDuration,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +28,7 @@ class LogoutDialog extends StatelessWidget {
           children: [
             const Center(
               child: Text(
-                AppStrings.logout,
+                AppStrings.confirmPunchOutTitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22,
@@ -34,11 +39,43 @@ class LogoutDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              AppStrings.logoutConfirmation,
+              AppStrings.confirmPunchOutMessage,
               style: TextStyle(
                 fontSize: 15,
                 height: 1.4,
                 color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      AppStrings.totalLoggedInFor,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    loggedDuration,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
@@ -63,32 +100,23 @@ class LogoutDialog extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF5E60CE), Color(0xFF6930C3)],
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      elevation: 0,
                     ),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: AppColors.white,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        onConfirm();
-                      },
-                      child: const Text(
-                        AppStrings.logout,
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onConfirm();
+                    },
+                    child: const Text(
+                      AppStrings.confirmPunchOutButton,
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),

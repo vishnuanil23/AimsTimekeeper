@@ -5,6 +5,7 @@ class HrmsUserModel {
   final String lastName;
   final String employeeCode;
   final bool isLoggedIn;
+  final bool isPunchedIn;
   final int? attendanceId;
 
   HrmsUserModel({
@@ -14,6 +15,7 @@ class HrmsUserModel {
     required this.lastName,
     required this.employeeCode,
     required this.isLoggedIn,
+    required this.isPunchedIn,
     this.attendanceId,
   });
 
@@ -25,6 +27,7 @@ class HrmsUserModel {
       lastName: json["lastName"],
       employeeCode: json["employeeCode"],
       isLoggedIn: json["isLoggedIn"] ?? false,
+      isPunchedIn: json["isPunchedIn"] ?? false,
       attendanceId: json["attendanceId"],
     );
   }
@@ -36,6 +39,7 @@ class HrmsUserModel {
         "lastName": lastName,
         "employeeCode": employeeCode,
         "isLoggedIn": isLoggedIn,
+        "isPunchedIn": isPunchedIn,
         "attendanceId": attendanceId,
       };
 }

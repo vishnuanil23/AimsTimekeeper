@@ -42,9 +42,7 @@ class HomeState {
   String greeting;
 
   static String _formatTime(DateTime dt) =>
-      "${dt.hour.toString().padLeft(2, '0')}:"
-      "${dt.minute.toString().padLeft(2, '0')}:"
-      "${dt.second.toString().padLeft(2, '0')}";
+      "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
 
   static String _formatDate(DateTime dt) {
     final day = dt.day;
@@ -116,7 +114,16 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
   final LocationRepository _locationRepo = Get.put(LocationRepository());
   final StorageService _storage = Get.find<StorageService>();
   final Rx<HomeState> homeState = HomeState().obs;
+  final RxString currentTime = HomeState._formatTime(DateTime.now()).obs;
+  final RxString currentDate = HomeState._formatDate(DateTime.now()).obs;
+  final RxString workDuration = '00:00:00'.obs;
   bool _isClockRunning = false;
+  bool _isOperationInProgress = false;
+  DateTime? _workDurationStartedAt;
+  DateTime? _lastSuccessfulLocalPunchInAt;
+  static const Duration _localPunchSyncProtectionWindow = Duration(minutes: 2);
+
+  bool get isOperationInProgress => _isOperationInProgress;
 
   @override
   void onInit() {
@@ -130,7 +137,9 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        syncAttendanceStatusFromServer();
+        if (!_isOperationInProgress) {
+          syncAttendanceStatusFromServer();
+        }
         _startClock();
         break;
       case AppLifecycleState.inactive:
@@ -184,9 +193,19 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
       // Load cached location if exists
       s.locationText = _storage.getCachedLocation();
     });
+
+    if (homeState.value.isPunchedIn) {
+      _workDurationStartedAt ??= homeState.value.lastPunchInTime;
+    } else {
+      _workDurationStartedAt = null;
+    }
+
+    _refreshClockValues();
   }
 
   Future<void> syncAttendanceStatusFromServer() async {
+    if (_isOperationInProgress) return;
+
     final user = await _storage.getUser();
     final userId = _readInt(user?["id"]);
 
@@ -196,6 +215,8 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
       final response = await _attendanceRepo.getAttendanceStatus(
         userId: userId,
       );
+
+      if (_isOperationInProgress) return;
 
       if (!response.success) return;
 
@@ -214,6 +235,13 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
         data["lastPunchInTime"] ?? data["lastPunchTime"],
       );
       final lastPunchOutTime = _parseDateTime(data["lastPunchOutTime"]);
+
+      if (_shouldIgnoreStaleStatusAfterLocalPunchIn(
+        isPunchedIn: isPunchedIn,
+        attendanceId: attendanceId,
+      )) {
+        return;
+      }
 
       await _saveAttendanceFallback(
         user: user,
@@ -235,6 +263,9 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
         s.lastPunchOutTime = lastPunchOutTime;
         if (!isPunchedIn) s.locationText = null;
       });
+      _workDurationStartedAt =
+          isPunchedIn ? (_workDurationStartedAt ?? lastPunchInTime) : null;
+      _refreshClockValues();
     } catch (_) {}
   }
 
@@ -252,19 +283,37 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
       if (!_isClockRunning || isClosed) return false;
 
       final now = DateTime.now();
-
-      homeState.update((s) {
-        if (s == null) return;
-        s.currentTime = HomeState._formatTime(now);
-        s.currentDate = HomeState._formatDate(now);
-      });
+      _refreshClockValues(now);
 
       return _isClockRunning && !isClosed;
     });
   }
 
+  void _refreshClockValues([DateTime? now]) {
+    final current = now ?? DateTime.now();
+    currentTime.value = HomeState._formatTime(current);
+    currentDate.value = HomeState._formatDate(current);
+    workDuration.value = _formatCurrentWorkDuration(current);
+  }
+
+  String _formatCurrentWorkDuration(DateTime now) {
+    final state = homeState.value;
+    final startedAt = _workDurationStartedAt;
+
+    if (!state.isPunchedIn) return state.formattedWorkDuration;
+    if (startedAt == null) return '00:00:00';
+
+    final diff = now.difference(startedAt);
+    final h = diff.inHours.toString().padLeft(2, '0');
+    final m = diff.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = diff.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
   /// Pull-to-refresh action
   Future<void> refreshData() async {
+    if (_isOperationInProgress || homeState.value.isLoading) return;
+
     homeState.update((s) {
       if (s == null) return;
       s.isLoading = true;
@@ -273,87 +322,85 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
     try {
       await syncAttendanceStatusFromServer();
     } finally {
-      homeState.update((s) {
-        if (s == null) return;
-        s.isLoading = false;
-      });
+      if (!_isOperationInProgress) {
+        homeState.update((s) {
+          if (s == null) return;
+          s.isLoading = false;
+        });
+      }
     }
   }
 
   /// Punch In / Punch Out
   Future<void> togglePunch() async {
-    if (homeState.value.isLoading || homeState.value.isFetchingLocation) return;
+    if (_isOperationInProgress ||
+        homeState.value.isLoading ||
+        homeState.value.isFetchingLocation) {
+      return;
+    }
 
+    _isOperationInProgress = true;
     homeState.update((s) {
       if (s == null) return;
       s.isLoading = true;
       s.isFetchingLocation = true;
     });
 
-    // Simulate delay for smooth UI transition
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      // Simulate delay for smooth UI transition
+      await Future.delayed(const Duration(milliseconds: 600));
 
-    // Fetch real location - handles permission requests
-    final position = await LocationService.getCurrentLocation();
+      // Fetch real location - handles permission requests
+      final position = await LocationService.getCurrentLocation();
 
-    if (position == null) {
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.deniedForever) {
-        Get.defaultDialog(
-          title: AppStrings.error,
-          middleText: AppStrings.locationPermissionPermanent,
-          textConfirm: AppStrings.openSettings,
-          textCancel: AppStrings.cancel,
-          confirmTextColor: AppColors.white,
-          onConfirm: () {
-            Geolocator.openAppSettings();
-            Get.back();
-          },
-        );
-      } else {
-        _showError(AppStrings.locationPermissionDenied);
+      if (position == null) {
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.deniedForever) {
+          Get.defaultDialog(
+            title: AppStrings.error,
+            middleText: AppStrings.locationPermissionPermanent,
+            textConfirm: AppStrings.openSettings,
+            textCancel: AppStrings.cancel,
+            confirmTextColor: AppColors.white,
+            onConfirm: () {
+              Geolocator.openAppSettings();
+              Get.back();
+            },
+          );
+        } else {
+          _showError(AppStrings.locationPermissionDenied);
+        }
+
+        return;
       }
 
+      final lat = position.latitude;
+      final lng = position.longitude;
+
+      // Fetch address for API (needed for backend)
+      final locationText =
+          await _locationRepo.getAreaFromCoordinates(lat, lng) ??
+          "Unknown Location";
+
+      // Show the freshly resolved location while the punch request is pending.
+      // Persist it only after a successful punch-in.
       homeState.update((s) {
         if (s == null) return;
-        s.isLoading = false;
         s.isFetchingLocation = false;
+        s.locationText = locationText;
       });
-      return;
-    }
 
-    final lat = position.latitude;
-    final lng = position.longitude;
+      // Get user
+      final user = await _storage.getUser();
+      final userId = _readInt(user?["id"]);
 
-    // Fetch address for API (needed for backend)
-    final locationText =
-        await _locationRepo.getAreaFromCoordinates(lat, lng) ??
-        "Unknown Location";
+      if (user == null || userId == null) {
+        _showError(AppStrings.userIdMissing);
+        return;
+      }
 
-    // DO NOT save to cache or update UI yet - wait for successful punch
-    homeState.update((s) {
-      if (s == null) return;
-      s.isFetchingLocation = false;
-      // Update UI with fresh location
-      s.locationText = locationText;
-    });
-
-    // Save to cache for app display persistence
-    await _storage.saveCachedLocation(locationText);
-
-    // Get user
-    final user = await _storage.getUser();
-    final userId = _readInt(user?["id"]);
-
-    if (user == null || userId == null) {
-      _showError(AppStrings.userIdMissing);
-      homeState.update((s) => s?.isLoading = false);
-      return;
-    }
-
-    // PUNCH IN
-    if (!homeState.value.isPunchedIn) {
-      try {
+      // PUNCH IN
+      if (!homeState.value.isPunchedIn) {
         final response = await _attendanceRepo.punchIn(
           userId: userId,
           latitude: lat,
@@ -361,53 +408,56 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
           location: locationText,
         );
 
-        if (!response.success) {
+      if (!response.success) {
           _showError(response.message ?? AppStrings.punchInFailed);
-          homeState.update((s) => s?.isLoading = false);
           // Location fetched but discarded on failure
           return;
         }
 
         final data = response.data["data"];
-        final dt = DateTime.parse(data["lastPunchTime"]);
+        final isPunchedIn = _readBool(data["isPunchedIn"]) ?? true;
+        final responseAttendanceId = _readInt(data["attendanceId"]);
+        final dt = _parseDateTime(
+          data["lastPunchInTime"] ?? data["lastPunchTime"],
+        );
+
+        if (dt == null) {
+          _showError(AppStrings.invalidServerResponse);
+          return;
+        }
 
         // SUCCESS: Now update UI and cache
         await _storage.saveCachedLocation(locationText);
         await _saveAttendanceFallback(
           user: user,
-          isPunchedIn: true,
-          attendanceId: _readInt(data["attendanceId"]),
+          isPunchedIn: isPunchedIn,
+          attendanceId: responseAttendanceId,
           lastPunchInTime: dt,
           lastPunchOutTime: null,
         );
 
         homeState.update((s) {
           if (s == null) return;
-          s.isPunchedIn = true;
+          s.isPunchedIn = isPunchedIn;
           s.lastPunchInTime = dt;
           s.lastPunchOutTime = null;
-          s.attendanceId = data["attendanceId"];
+          s.attendanceId = responseAttendanceId;
           s.locationText = locationText;
-          print("Saved AttendanceID: ${data["attendanceId"]}");
-          s.isLoading = false;
         });
+        _workDurationStartedAt = isPunchedIn ? DateTime.now() : null;
+        _lastSuccessfulLocalPunchInAt = isPunchedIn ? DateTime.now() : null;
+        _refreshClockValues();
 
         _showSuccess(AppStrings.punchInRecorded);
-      } catch (e) {
-        _showError("${AppStrings.error}: $e");
-        homeState.update((s) => s?.isLoading = false);
+
+        return;
       }
 
-      return;
-    }
-
-    // PUNCH OUT
-    try {
+      // PUNCH OUT
       final attendanceId = homeState.value.attendanceId;
 
       if (attendanceId == null) {
         _showError(AppStrings.attendanceIdMissing);
-        homeState.update((s) => s?.isLoading = false);
         return;
       }
 
@@ -421,19 +471,26 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
 
       if (!response.success) {
         _showError(response.message ?? AppStrings.punchOutFailed);
-        homeState.update((s) => s?.isLoading = false);
         return;
       }
 
       final data = response.data["data"];
-      final dt = DateTime.parse(data["lastPunchOutTime"]);
-      final user = await _storage.getUser();
+      final isPunchedIn = _readBool(data["isPunchedIn"]) ?? false;
+      final responseAttendanceId = _readInt(data["attendanceId"]);
+      final dt = _parseDateTime(data["lastPunchOutTime"]);
 
-      if (user != null) {
+      if (dt == null) {
+        _showError(AppStrings.invalidServerResponse);
+        return;
+      }
+
+      final latestUser = await _storage.getUser();
+
+      if (latestUser != null) {
         await _saveAttendanceFallback(
-          user: user,
-          isPunchedIn: false,
-          attendanceId: null,
+          user: latestUser,
+          isPunchedIn: isPunchedIn,
+          attendanceId: isPunchedIn ? responseAttendanceId : null,
           lastPunchInTime: homeState.value.lastPunchInTime,
           lastPunchOutTime: dt,
         );
@@ -441,19 +498,27 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
 
       homeState.update((s) {
         if (s == null) return;
-        s.isPunchedIn = false;
-        s.attendanceId = null;
+        s.isPunchedIn = isPunchedIn;
+        s.attendanceId = isPunchedIn ? responseAttendanceId : null;
         s.lastPunchOutTime = dt;
-        s.locationText = null; // Clear from state
-        s.isLoading = false;
+        if (!isPunchedIn) s.locationText = null; // Clear from state
       });
+      _workDurationStartedAt = isPunchedIn ? homeState.value.lastPunchInTime : null;
+      _lastSuccessfulLocalPunchInAt = isPunchedIn ? DateTime.now() : null;
+      _refreshClockValues();
 
       await _storage.clearCachedLocation(); // Clear from storage
 
       _showSuccess(AppStrings.punchOutRecorded);
     } catch (e) {
       _showError("${AppStrings.error}: $e");
-      homeState.update((s) => s?.isLoading = false);
+    } finally {
+      _isOperationInProgress = false;
+      homeState.update((s) {
+        if (s == null) return;
+        s.isLoading = false;
+        s.isFetchingLocation = false;
+      });
     }
   }
 
@@ -461,7 +526,7 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
   Future<void> logout() async {
     final rememberedEmail = await _storage.getRememberedEmail();
 
-    await _storage.clearAll();
+    await _storage.clearSessionData();
 
     if (rememberedEmail != null) {
       await _storage.saveRememberedEmail(rememberedEmail);
@@ -476,6 +541,8 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
       s.userEmail = rememberedEmail ?? "";
       s.locationText = null;
     });
+    _workDurationStartedAt = null;
+    _refreshClockValues();
 
     Get.offAllNamed('/login');
   }
@@ -585,5 +652,24 @@ class HomeViewModel extends GetxController with WidgetsBindingObserver {
       return DateTime.tryParse(value);
     }
     return null;
+  }
+
+  bool _shouldIgnoreStaleStatusAfterLocalPunchIn({
+    required bool isPunchedIn,
+    required int? attendanceId,
+  }) {
+    if (isPunchedIn || !homeState.value.isPunchedIn) return false;
+
+    final localPunchInAt = _lastSuccessfulLocalPunchInAt;
+    if (localPunchInAt == null) return false;
+
+    final isRecentlyPunchedIn =
+        DateTime.now().difference(localPunchInAt) <
+        _localPunchSyncProtectionWindow;
+    if (!isRecentlyPunchedIn) return false;
+
+    final localAttendanceId = homeState.value.attendanceId;
+    return attendanceId == null ||
+        (localAttendanceId != null && attendanceId != localAttendanceId);
   }
 }
